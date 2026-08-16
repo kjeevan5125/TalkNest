@@ -90,11 +90,13 @@ const initializeSocket = (server) => {
       }
     });
 
-    socket.on("disconnect", async () => {
+    socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
 
-      await User.findByIdAndUpdate(socket.userId, {
+      User.findByIdAndUpdate(socket.userId, {
         isOnline: false,
+      }).catch((error) => {
+        console.error("Offline status error:", error.message);
       });
     });
   });
