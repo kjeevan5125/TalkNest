@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import Message from "../models/Message.js";
+import Conversation from "../models/Conversation.js";
 
 const initializeSocket = (server) => {
   const io = new Server(server, {
@@ -34,12 +35,29 @@ const initializeSocket = (server) => {
     console.log("User connected:", socket.id);
     console.log("User ID:", socket.userId);
 
-    socket.on("joinConversation", (conversationId) => {
-      socket.join(conversationId);
+    socket.on("joinConversation", async (conversationId) => {
+        try {
+            const conversation = await Conversation.findOne({
+                _id: conversationId,
+                participants: socket.userId,
+            });
 
-      console.log(
-        `Socket ${socket.id} joined conversation ${conversationId}`
-      );
+            if (!conversation) {
+                console.log(
+                    `User ${socket.userId} is not a participant of ${conversationId}`
+                );
+
+                return;
+            }
+
+            socket.join(conversationId);
+
+            console.log(
+            `Socket ${socket.id} joined conversation ${conversationId}`
+            );
+        } catch (error) {
+            console.error("Join conversation error:", error.message);
+        }
     });
 
     socket.on("sendMessage", async ({ conversationId, text }) => {
