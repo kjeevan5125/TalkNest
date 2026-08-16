@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import Message from "../models/Message.js";
 import Conversation from "../models/Conversation.js";
+import User from "../models/user.js";
 
 const initializeSocket = (server) => {
   const io = new Server(server, {
@@ -35,29 +36,39 @@ const initializeSocket = (server) => {
     console.log("User connected:", socket.id);
     console.log("User ID:", socket.userId);
 
+    User.findByIdAndUpdate(socket.userId, {
+        isOnline: true,
+        }).catch((error) => {
+        console.error("Online status error:", error.message);
+    });
+
     socket.on("joinConversation", async (conversationId) => {
-        try {
-            const conversation = await Conversation.findOne({
-                _id: conversationId,
-                participants: socket.userId,
-            });
+      try {
 
-            if (!conversation) {
-                console.log(
-                    `User ${socket.userId} is not a participant of ${conversationId}`
-                );
+        const conversation = await Conversation.findOne({
+          _id: conversationId,
+          participants: socket.userId,
+        });
 
-                return;
-            }
+        if (!conversation) {
+          console.log(
+            `User ${socket.userId} is not a participant of ${conversationId}`
+          );
 
-            socket.join(conversationId);
-
-            console.log(
-            `Socket ${socket.id} joined conversation ${conversationId}`
-            );
-        } catch (error) {
-            console.error("Join conversation error:", error.message);
+          return;
         }
+
+        socket.join(conversationId);
+
+        console.log(
+          `Socket ${socket.id} joined conversation ${conversationId}`
+        );
+      } catch (error) {
+        console.error(
+          "Join conversation error:",
+          error.message
+        );
+      }
     });
 
     socket.on("sendMessage", async ({ conversationId, text }) => {
@@ -72,12 +83,19 @@ const initializeSocket = (server) => {
 
         console.log("Message sent:", message._id);
       } catch (error) {
-        console.error("Socket message error:", error.message);
+        console.error(
+          "Socket message error:",
+          error.message
+        );
       }
     });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
       console.log("User disconnected:", socket.id);
+
+      await User.findByIdAndUpdate(socket.userId, {
+        isOnline: false,
+      });
     });
   });
 
