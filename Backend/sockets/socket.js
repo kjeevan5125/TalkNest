@@ -141,6 +141,18 @@ const initializeSocket = (server) => {
       }
     });
 
+    socket.on("typing", (conversationId) => {
+      socket.to(conversationId).emit("userTyping", {
+        userId: socket.userId,
+      });
+    });
+
+    socket.on("stopTyping", (conversationId) => {
+      socket.to(conversationId).emit("userStoppedTyping", {
+        userId: socket.userId,
+      });
+    });
+
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
 
