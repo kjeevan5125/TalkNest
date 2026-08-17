@@ -1,4 +1,5 @@
 import Message from "../models/Message.js";
+import Conversation from "../models/Conversation.js";
 
 export const sendMessage = async (req, res) => {
   try {
@@ -29,6 +30,17 @@ export const sendMessage = async (req, res) => {
 export const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: req.user._id,
+    });
+
+    if (!conversation) {
+      return res.status(403).json({
+        message: "You are not a participant of this conversation",
+      });
+    }
 
     const messages = await Message.find({
       conversation: conversationId,

@@ -227,3 +227,25 @@ export const leaveGroup = async (req, res) => {
     });
   }
 };
+
+export const getMyConversations = async (req, res) => {
+  try {
+    const conversations = await Conversation.find({
+      participants: req.user._id,
+    })
+      .populate("participants", "name email isOnline")
+      .populate({
+        path: "lastMessage",
+        select: "sender text isDelivered isRead createdAt",
+      })
+      .sort({ updatedAt: -1 });
+
+    res.status(200).json(conversations);
+  } catch (error) {
+    console.error("Get conversations error:", error.message);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};

@@ -91,6 +91,10 @@ const initializeSocket = (server) => {
           text,
         });
 
+        await Conversation.findByIdAndUpdate(conversationId, {
+          lastMessage: message._id,
+        });
+
         io.to(conversationId).emit("newMessage", message);
 
         console.log("Message sent:", message._id);
