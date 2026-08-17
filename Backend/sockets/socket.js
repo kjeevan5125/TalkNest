@@ -102,6 +102,41 @@ const initializeSocket = (server) => {
       }
     });
 
+    socket.on("messageDelivered", async (messageId) => {
+      try {
+        const message = await Message.findById(messageId);
+
+        if (!message) {
+          console.log(`Message ${messageId} not found`);
+          return;
+        }
+
+        const conversation = await Conversation.findOne({
+          _id: message.conversation,
+          participants: socket.userId,
+        });
+
+        if (!conversation) {
+          console.log(
+            `User ${socket.userId} is not a participant of this conversation`
+          );
+
+          return;
+        }
+
+        await Message.findByIdAndUpdate(messageId, {
+          isDelivered: true,
+        });
+
+        console.log("Message delivered:", messageId);
+      } catch (error) {
+        console.error(
+          "Message delivery error:",
+          error.message
+        );
+      }
+    });
+
     socket.on("markAsRead", async (conversationId) => {
       try {
         const conversation = await Conversation.findOne({

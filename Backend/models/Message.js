@@ -20,6 +20,11 @@ const messageSchema = new mongoose.Schema(
       trim: true,
     },
 
+    isDelivered: {
+      type: Boolean,
+      default: false,
+    },
+
     isRead: {
       type: Boolean,
       default: false,
