@@ -1,9 +1,20 @@
 import express from "express";
-import { createOrGetConversation } from "../controllers/conversationController.js";
+import { 
+    createOrGetConversation,
+    createGroup,
+    addMember,
+    removeMember,
+    leaveGroup,
+} from "../controllers/conversationController.js";
 import { protect } from "../middleware/authMiddleware.js";
+
 
 const router=express.Router();
 
 router.post("/", protect, createOrGetConversation);
+router.post("/group",protect,createGroup);
+router.post("/:conversationId/members",protect,addMember);
+router.delete("/:conversationId/members",protect,removeMember);
+router.delete("/:conversationId/leave",protect,leaveGroup);
 
 export default router;
