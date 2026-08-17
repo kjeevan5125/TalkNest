@@ -37,14 +37,13 @@ const initializeSocket = (server) => {
     console.log("User ID:", socket.userId);
 
     User.findByIdAndUpdate(socket.userId, {
-        isOnline: true,
-        }).catch((error) => {
-        console.error("Online status error:", error.message);
+      isOnline: true,
+    }).catch((error) => {
+      console.error("Online status error:", error.message);
     });
 
     socket.on("joinConversation", async (conversationId) => {
       try {
-
         const conversation = await Conversation.findOne({
           _id: conversationId,
           participants: socket.userId,
@@ -73,6 +72,19 @@ const initializeSocket = (server) => {
 
     socket.on("sendMessage", async ({ conversationId, text }) => {
       try {
+        const conversation = await Conversation.findOne({
+          _id: conversationId,
+          participants: socket.userId,
+        });
+
+        if (!conversation) {
+          console.log(
+            `User ${socket.userId} is not a participant of ${conversationId}`
+          );
+
+          return;
+        }
+
         const message = await Message.create({
           conversation: conversationId,
           sender: socket.userId,
@@ -90,13 +102,55 @@ const initializeSocket = (server) => {
       }
     });
 
+    socket.on("markAsRead", async (conversationId) => {
+      try {
+        const conversation = await Conversation.findOne({
+          _id: conversationId,
+          participants: socket.userId,
+        });
+
+        if (!conversation) {
+          console.log(
+            `User ${socket.userId} is not a participant of ${conversationId}`
+          );
+
+          return;
+        }
+
+        const result = await Message.updateMany(
+          {
+            conversation: conversationId,
+            sender: { $ne: socket.userId },
+            isRead: false,
+          },
+          {
+            $set: {
+              isRead: true,
+            },
+          }
+        );
+
+        console.log(
+          `Messages marked as read: ${result.modifiedCount}`
+        );
+      } catch (error) {
+        console.error(
+          "Mark as read error:",
+          error.message
+        );
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
 
       User.findByIdAndUpdate(socket.userId, {
         isOnline: false,
       }).catch((error) => {
-        console.error("Offline status error:", error.message);
+        console.error(
+          "Offline status error:",
+          error.message
+        );
       });
     });
   });

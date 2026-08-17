@@ -18,6 +18,30 @@ socket.on("connect", () => {
   console.log("Sending join request:", conversationId);
 
   socket.emit("joinConversation", conversationId);
+
+  setTimeout(() => {
+    console.log("TIMER FIRED");
+    
+    socket.emit("sendMessage", {
+      conversationId,
+      text: "Testing message authorization",
+    });
+
+    console.log("Message event emitted");
+  }, 3000);
+
+  setTimeout(() => {
+    console.log("Marking messages as read...");
+
+    socket.emit(
+      "markAsRead",
+      "6a818faa0e32ed39a8004bcc"
+    );
+  }, 10000);
+});
+
+socket.on("newMessage", (message) => {
+  console.log("NEW MESSAGE:", message);
 });
 
 socket.on("connect_error", (error) => {
