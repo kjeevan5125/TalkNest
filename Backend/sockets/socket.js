@@ -206,13 +206,13 @@ const initializeSocket = (server) => {
     });
 
     socket.on("typing", (conversationId) => {
-      socket.to(conversationId).emit("userTyping", {
+      socket.to(String(conversationId)).emit("userTyping", {
         userId: socket.userId,
       });
     });
 
     socket.on("stopTyping", (conversationId) => {
-      socket.to(conversationId).emit("userStoppedTyping", {
+      socket.to(String(conversationId)).emit("userStoppedTyping", {
         userId: socket.userId,
       });
     });
