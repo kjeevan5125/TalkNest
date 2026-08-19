@@ -12,97 +12,81 @@ function Home() {
           TalkNest
         </Link>
 
-        <div className="home-nav-actions">
+        <div className="nav-links">
+          <Link to="/">Home</Link>
+
           {user ? (
-            <Link to="/chat" className="nav-button primary">
+            <Link to="/chat" className="nav-button">
               Open Chat
             </Link>
           ) : (
             <>
-              <Link to="/login" className="nav-button">
-                Login
-              </Link>
+              <Link to="/login">Login</Link>
 
-              <Link to="/register" className="nav-button primary">
-                Get Started
+              <Link to="/register" className="nav-button">
+                Register
               </Link>
             </>
           )}
         </div>
       </nav>
 
-      <main className="home-hero">
+      <main className="home-content">
 
-        <div className="hero-content">
-
-          <div className="hero-badge">
-            Real-time communication
-          </div>
-
-          <h1>
-            Connect.
-            <br />
-            Talk.
-            <br />
-            <span>Share.</span>
-          </h1>
+        <section className="intro">
+          <h1>Welcome to TalkNest</h1>
 
           <p>
-            TalkNest makes it simple to connect with people,
-            have real-time conversations, and stay connected
-            wherever you are.
+            A simple real-time chatting application where you
+            can connect with friends, send messages and create
+            group conversations.
           </p>
 
-          <div className="hero-buttons">
+          <div className="home-buttons">
             {user ? (
-              <Link to="/chat" className="hero-primary">
-                Open TalkNest
+              <Link to="/chat" className="primary-button">
+                Open Chat
               </Link>
             ) : (
               <>
-                <Link to="/register" className="hero-primary">
+                <Link to="/register" className="primary-button">
                   Get Started
                 </Link>
 
-                <Link to="/login" className="hero-secondary">
+                <Link to="/login" className="secondary-button">
                   Login
                 </Link>
               </>
             )}
           </div>
+        </section>
 
-        </div>
+        <section className="chat-preview">
 
-        <div className="hero-preview">
+          <div className="preview-title">
+            <h2>TalkNest</h2>
 
-          <div className="preview-header">
-            <div className="preview-brand">
-              TalkNest
-            </div>
-
-            <div className="online-indicator">
-              <span></span>
+            <span>
+              <span className="online-dot"></span>
               Online
-            </div>
+            </span>
           </div>
 
-          <div className="preview-chat">
+          <div className="preview-body">
 
             <div className="preview-sidebar">
-              <div className="sidebar-title">
-                Conversations
-              </div>
+              <h3>Chats</h3>
 
-              <div className="conversation active">
+              <div className="chat-user active">
                 <div className="avatar">A</div>
 
                 <div>
                   <strong>Alex</strong>
-                  <p>Hey! How are you?</p>
+                  <p>Hey, how are you?</p>
                 </div>
               </div>
 
-              <div className="conversation">
+              <div className="chat-user">
                 <div className="avatar">S</div>
 
                 <div>
@@ -119,45 +103,48 @@ function Home() {
               </div>
 
               <div className="message sent">
-                Thanks! Great to be here.
+                Thanks!
               </div>
 
               <div className="message received">
-                Let's start chatting!
+                Let's start chatting.
               </div>
 
             </div>
 
           </div>
 
-        </div>
+        </section>
 
       </main>
 
-      <section className="home-features">
+      <section className="features">
 
-        <div className="feature">
-          <div className="feature-icon">⚡</div>
-          <h3>Real-time</h3>
-          <p>
-            Send and receive messages instantly.
-          </p>
-        </div>
+        <h2>What you can do</h2>
 
-        <div className="feature">
-          <div className="feature-icon">💬</div>
-          <h3>Conversations</h3>
-          <p>
-            Keep all your conversations organized.
-          </p>
-        </div>
+        <div className="feature-list">
 
-        <div className="feature">
-          <div className="feature-icon">👥</div>
-          <h3>Groups</h3>
-          <p>
-            Create groups and chat with multiple people.
-          </p>
+          <div className="feature">
+            <h3>💬 Chat</h3>
+            <p>
+              Send messages and have real-time conversations.
+            </p>
+          </div>
+
+          <div className="feature">
+            <h3>👥 Groups</h3>
+            <p>
+              Create groups and chat with multiple users.
+            </p>
+          </div>
+
+          <div className="feature">
+            <h3>⚡ Real-time</h3>
+            <p>
+              See messages and typing activity instantly.
+            </p>
+          </div>
+
         </div>
 
       </section>

@@ -57,7 +57,7 @@ const initializeSocket = (server) => {
           return;
         }
 
-        socket.join(conversationId);
+        socket.join(String(conversationId));
 
         console.log(
           `Socket ${socket.id} joined conversation ${conversationId}`
@@ -70,41 +70,66 @@ const initializeSocket = (server) => {
       }
     });
 
-    socket.on("sendMessage", async ({ conversationId, text }) => {
-      try {
-        const conversation = await Conversation.findOne({
-          _id: conversationId,
-          participants: socket.userId,
-        });
+    socket.on("sendMessage",async ({ conversationId, text }, callback) => {
+        try {
+          const conversation = await Conversation.findOne({
+            _id: conversationId,
+            participants: socket.userId,
+          });
 
-        if (!conversation) {
-          console.log(
-            `User ${socket.userId} is not a participant of ${conversationId}`
+          if (!conversation) {
+            if (callback) {
+              callback({
+                success: false,
+                message: "You are not a participant of this conversation",
+              });
+            }
+
+            return;
+          }
+
+          const message = await Message.create({
+            conversation: conversationId,
+            sender: socket.userId,
+            text,
+          });
+
+          await Conversation.findByIdAndUpdate(conversationId, {
+            lastMessage: message._id,
+          });
+
+          const populatedMessage = await Message.findById(
+            message._id
+          ).populate("sender", "name email");
+
+          io.to(String(conversationId)).emit(
+            "newMessage",
+            populatedMessage
           );
 
-          return;
+          if (callback) {
+            callback({
+              success: true,
+              message: populatedMessage,
+            });
+          }
+
+          console.log("Message sent:", message._id);
+        } catch (error) {
+          console.error(
+            "Socket message error:",
+            error.message
+          );
+
+          if (callback) {
+            callback({
+              success: false,
+              message: "Failed to send message",
+            });
+          }
         }
-
-        const message = await Message.create({
-          conversation: conversationId,
-          sender: socket.userId,
-          text,
-        });
-
-        await Conversation.findByIdAndUpdate(conversationId, {
-          lastMessage: message._id,
-        });
-
-        io.to(conversationId).emit("newMessage", message);
-
-        console.log("Message sent:", message._id);
-      } catch (error) {
-        console.error(
-          "Socket message error:",
-          error.message
-        );
       }
-    });
+    );
 
     socket.on("messageDelivered", async (messageId) => {
       try {
