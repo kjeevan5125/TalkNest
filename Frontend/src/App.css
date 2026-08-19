@@ -641,3 +641,17 @@
   color: #6b7280;
   font-size: 12px;
 }
+
+.online-status {
+  color: #22c55e;
+  font-size: 13px;
+}
+
+.offline-status {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.conversation-avatar.online {
+  border: 2px solid #22c55e;
+}

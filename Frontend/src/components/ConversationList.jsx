@@ -18,6 +18,40 @@ function ConversationList({ onSelectConversation }) {
       }
     }
 
+    const handleUserOnline = ({ userId }) => {
+      setConversations((prevConversations) =>
+        prevConversations.map((conversation) => ({
+          ...conversation,
+          participants: conversation.participants.map(
+            (participant) =>
+              String(participant._id) === String(userId)
+                ? {
+                    ...participant,
+                    isOnline: true,
+                  }
+                : participant
+          ),
+        }))
+      )
+    }
+
+    const handleUserOffline = ({ userId }) => {
+      setConversations((prevConversations) =>
+        prevConversations.map((conversation) => ({
+          ...conversation,
+          participants: conversation.participants.map(
+            (participant) =>
+              String(participant._id) === String(userId)
+                ? {
+                    ...participant,
+                    isOnline: false,
+                  }
+                : participant
+          ),
+        }))
+      )
+    }
+
     const handleNewMessage = (message) => {
       const conversationId =
         message.conversation?._id ||
@@ -57,9 +91,13 @@ function ConversationList({ onSelectConversation }) {
     fetchConversations()
 
     socket.on('newMessage', handleNewMessage)
+    socket.on('userOnline', handleUserOnline)
+    socket.on('userOffline', handleUserOffline)
 
     return () => {
       socket.off('newMessage', handleNewMessage)
+      socket.off('userOnline', handleUserOnline)
+      socket.off('userOffline', handleUserOffline)
     }
   }, [])
 
@@ -99,7 +137,14 @@ function ConversationList({ onSelectConversation }) {
                 onSelectConversation(conversation)
               }
             >
-              <div className="conversation-avatar">
+              <div
+                className={`conversation-avatar ${
+                  !conversation.isGroup &&
+                  otherUser?.isOnline
+                    ? 'online'
+                    : ''
+                }`}
+              >
                 {name?.charAt(0)}
               </div>
 
