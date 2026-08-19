@@ -48,6 +48,45 @@ function ChatLayout() {
     }
   }, [selectedConversation])
 
+  useEffect(() => {
+    if (!token) {
+      return
+    }
+
+    const handleNewMessage = (message) => {
+      const currentUserId = user?._id || user?.id
+
+      const senderId =
+        message.sender?._id ||
+        message.sender?.id ||
+        message.sender
+
+      if (
+        String(senderId) ===
+        String(currentUserId)
+      ) {
+        return
+      }
+
+      socket.emit(
+        'messageDelivered',
+        message._id
+      )
+    }
+
+    socket.on(
+      'newMessage',
+      handleNewMessage
+    )
+
+    return () => {
+      socket.off(
+        'newMessage',
+        handleNewMessage
+      )
+    }
+  }, [token, user])
+
   return (
     <div className="chat-layout">
 

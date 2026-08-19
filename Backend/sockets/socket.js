@@ -44,6 +44,59 @@ const initializeSocket = (server) => {
     const currentConnections = onlineUsers.get(userId) || 0;
     onlineUsers.set(userId, currentConnections + 1);
 
+    const conversations = await Conversation.find({
+      participants: socket.userId,
+    }).select("_id");
+
+    const conversationIds = conversations.map(
+      (conversation) => conversation._id
+    );
+
+    const undeliveredMessages = await Message.find({
+      conversation: { $in: conversationIds },
+      sender: { $ne: socket.userId },
+      isDelivered: false,
+    }).select("_id sender");
+
+    if (undeliveredMessages.length > 0) {
+      await Message.updateMany(
+        {
+          _id: {
+            $in: undeliveredMessages.map(
+              (message) => message._id
+            ),
+          },
+        },
+        {
+          $set: {
+            isDelivered: true,
+          },
+        }
+      );
+
+      const senderMessages = new Map();
+
+      undeliveredMessages.forEach((message) => {
+        const senderId = String(message.sender);
+
+        if (!senderMessages.has(senderId)) {
+          senderMessages.set(senderId, []);
+        }
+
+        senderMessages
+          .get(senderId)
+          .push(message._id);
+      });
+
+      senderMessages.forEach(
+        (messageIds, senderId) => {
+          io.to(senderId).emit("messagesDelivered", {
+            messageIds,
+          });
+        }
+      );
+    }
+
     if (currentConnections === 0) {
       await User.findByIdAndUpdate(socket.userId, {
         isOnline: true,
@@ -114,6 +167,19 @@ const initializeSocket = (server) => {
           "newMessage",
           populatedMessage
         );
+
+        conversation.participants.forEach((participantId) => {
+          const participantIdString = String(participantId);
+
+          if (
+            participantIdString !== String(socket.userId)
+          ) {
+            io.to(participantIdString).emit(
+              "newMessage",
+              populatedMessage
+            );
+          }
+        });
 
         if (callback) {
           callback({
@@ -196,7 +262,17 @@ const initializeSocket = (server) => {
           return;
         }
 
-        const result = await Message.updateMany(
+        const messages = await Message.find({
+          conversation: conversationId,
+          sender: { $ne: socket.userId },
+          isRead: false,
+        }).select("_id sender");
+
+        if (messages.length === 0) {
+          return;
+        }
+
+        await Message.updateMany(
           {
             conversation: conversationId,
             sender: { $ne: socket.userId },
@@ -209,8 +285,27 @@ const initializeSocket = (server) => {
           }
         );
 
+        const messageIds = messages.map(
+          (message) => message._id
+        );
+
+        const senderIds = [
+          ...new Set(
+            messages.map((message) =>
+              String(message.sender)
+            )
+          ),
+        ];
+
+        senderIds.forEach((senderId) => {
+          io.to(senderId).emit("messagesRead", {
+            conversationId: String(conversationId),
+            messageIds,
+          });
+        });
+
         console.log(
-          `Messages marked as read: ${result.modifiedCount}`
+          `Messages marked as read: ${messages.length}`
         );
       } catch (error) {
         console.error(
@@ -223,12 +318,14 @@ const initializeSocket = (server) => {
     socket.on("typing", (conversationId) => {
       socket.to(String(conversationId)).emit("userTyping", {
         userId: socket.userId,
+        conversationId,
       });
     });
 
     socket.on("stopTyping", (conversationId) => {
       socket.to(String(conversationId)).emit("userStoppedTyping", {
         userId: socket.userId,
+        conversationId,
       });
     });
 
