@@ -204,7 +204,6 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
 
   return (
     <aside className="conversation-sidebar">
-      {/* Sidebar Header */}
       <div className="conversation-header">
         <h3>Conversations</h3>
         <button
@@ -217,7 +216,6 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
         </button>
       </div>
 
-      {/* Search Bar */}
       <div className="conversation-search-container">
         <input
           type="text"
@@ -228,7 +226,6 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
         />
       </div>
 
-      {/* Conversations List */}
       <div className="conversation-items-list">
         {filteredConversations.map((conversation) => {
           const participants = conversation.participants || []
@@ -288,7 +285,6 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
         )}
       </div>
 
-      {/* Create Group Modal */}
       {showCreateGroup && (
         <CreateGroup
           onClose={() => setShowCreateGroup(false)}

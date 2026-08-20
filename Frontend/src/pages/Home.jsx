@@ -34,7 +34,7 @@ function Home() {
       <main className="home-content">
 
         <section className="intro">
-          <h1>Welcome to TalkNest</h1>
+          <h1>Welcome to <span>TalkNest</span></h1>
 
           <p>
             A simple real-time chatting application where you

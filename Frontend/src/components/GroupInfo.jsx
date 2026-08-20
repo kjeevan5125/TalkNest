@@ -132,7 +132,6 @@ function GroupInfo({ conversation, onClose }) {
   return (
     <div className="group-info-overlay" onClick={onClose}>
       <div className="group-info-card" onClick={(e) => e.stopPropagation()}>
-        {/* Modal Header */}
         <div className="group-info-header">
           <h3>Group Details</h3>
           <button type="button" className="group-close-btn" onClick={onClose}>
@@ -140,7 +139,6 @@ function GroupInfo({ conversation, onClose }) {
           </button>
         </div>
 
-        {/* Group Hero info */}
         <div className="group-info-hero">
           <div className="group-hero-avatar">
             {conversation.groupName?.charAt(0)?.toUpperCase() || 'G'}
@@ -152,10 +150,8 @@ function GroupInfo({ conversation, onClose }) {
           </p>
         </div>
 
-        {/* Error message */}
         {error && <div className="group-error-banner">{error}</div>}
 
-        {/* Add Member Toggle (Admin only) */}
         {isAdmin && (
           <button
             type="button"
@@ -172,7 +168,6 @@ function GroupInfo({ conversation, onClose }) {
           </button>
         )}
 
-        {/* Add Member Drawer */}
         {showAdd && isAdmin && (
           <div className="group-add-section">
             <h4 className="section-title">Select User to Add</h4>
@@ -206,7 +201,6 @@ function GroupInfo({ conversation, onClose }) {
           </div>
         )}
 
-        {/* Members List */}
         <div className="group-members-container">
           <h4 className="section-title">
             Members ({participants.length})
@@ -268,7 +262,6 @@ function GroupInfo({ conversation, onClose }) {
           </div>
         </div>
 
-        {/* Leave Group Button (for non-admins) */}
         {!isAdmin && (
           <button
             type="button"

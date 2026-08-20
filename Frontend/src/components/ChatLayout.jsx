@@ -103,6 +103,13 @@ function ChatLayout() {
     }
   }, [token, user, selectedConversation])
 
+  const handleLogout = () => {
+    const confirmed = window.confirm('Are you sure you want to logout?')
+    if (confirmed) {
+      logout()
+    }
+  }
+
   return (
     <div className="chat-layout">
       <header className="chat-header">
@@ -116,7 +123,7 @@ function ChatLayout() {
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <span className="user-name">{user?.name}</span>
-          <button className="logout-btn" onClick={logout}>
+          <button className="logout-btn" onClick={handleLogout}>
             Logout
           </button>
         </div>

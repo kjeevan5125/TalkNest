@@ -25,7 +25,6 @@ function ChatWindow({ conversation }) {
   const typingTimeoutRef = useRef(null)
   const initialLoadRef = useRef(true)
 
-  // Listen for online/offline status in 1-on-1 chats
   useEffect(() => {
     if (!conversation || conversation.isGroup || !otherUser) {
       return
@@ -54,7 +53,6 @@ function ChatWindow({ conversation }) {
     }
   }, [conversation, otherUser])
 
-  // Listen for real-time messaging, delivery receipts, and read receipts
   useEffect(() => {
     if (!conversation) {
       return
@@ -156,7 +154,6 @@ function ChatWindow({ conversation }) {
     }
   }, [conversation, user])
 
-  // Listen for typing indicators
   useEffect(() => {
     if (!conversation) {
       return
@@ -203,7 +200,6 @@ function ChatWindow({ conversation }) {
     }
   }, [conversation, user])
 
-  // Fetch message history for the active conversation
   useEffect(() => {
     if (!conversation) {
       return
@@ -268,7 +264,6 @@ function ChatWindow({ conversation }) {
     }
   }, [conversation])
 
-  // Mark active conversation messages as read
   useEffect(() => {
     if (!conversation) {
       return
@@ -289,7 +284,6 @@ function ChatWindow({ conversation }) {
     }
   }, [conversation])
 
-  // Auto-scroll to latest message
   useEffect(() => {
     if (loading || !messages.length) {
       return
@@ -304,7 +298,6 @@ function ChatWindow({ conversation }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  // Clean up typing timeout
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) {
@@ -396,7 +389,6 @@ function ChatWindow({ conversation }) {
 
   return (
     <main className="chat-window">
-      {/* Header */}
       <div className="chat-window-header">
         <div className="chat-header-user-info">
           <div className="chat-header-avatar">
@@ -433,7 +425,6 @@ function ChatWindow({ conversation }) {
         )}
       </div>
 
-      {/* Messages Stream */}
       <div className="chat-messages">
         {loading ? (
           <div className="chat-status-container">
@@ -527,7 +518,6 @@ function ChatWindow({ conversation }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Typing Indicator */}
       {typingUser && (
         <div className="typing-indicator">
           <span className="typing-dot"></span>
@@ -537,7 +527,6 @@ function ChatWindow({ conversation }) {
         </div>
       )}
 
-      {/* Input bar */}
       <form className="chat-input-form" onSubmit={handleSendMessage}>
         <input
           type="text"
@@ -556,7 +545,6 @@ function ChatWindow({ conversation }) {
         </button>
       </form>
 
-      {/* Group Info Modal */}
       {showGroupInfo && (
         <GroupInfo
           conversation={conversation}
