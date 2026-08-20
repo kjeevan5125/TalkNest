@@ -48,6 +48,8 @@ function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <Link to="/" className="auth-back-link">← Back to Home</Link>
+
 
         <div className="auth-header">
           <h1>Welcome Back</h1>

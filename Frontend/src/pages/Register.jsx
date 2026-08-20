@@ -49,6 +49,8 @@ function Register() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <Link to="/" className="auth-back-link">← Back to Home</Link>
+
 
         <div className="auth-header">
           <h1>Join TalkNest</h1>

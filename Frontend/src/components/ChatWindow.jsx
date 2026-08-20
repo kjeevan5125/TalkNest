@@ -4,7 +4,7 @@ import { useAuth } from '../context/authContext'
 import socket from '../services/socket'
 import GroupInfo from './GroupInfo'
 
-function ChatWindow({ conversation }) {
+function ChatWindow({ conversation, onBack }) {
   const { user } = useAuth()
 
   const currentUserId = user?._id || user?.id
@@ -390,6 +390,15 @@ function ChatWindow({ conversation }) {
   return (
     <main className="chat-window">
       <div className="chat-window-header">
+        <button
+          type="button"
+          className="mobile-back-btn"
+          onClick={onBack}
+          aria-label="Back to conversations"
+        >
+          ←
+        </button>
+
         <div className="chat-header-user-info">
           <div className="chat-header-avatar">
             {conversationName?.charAt(0)?.toUpperCase()}
