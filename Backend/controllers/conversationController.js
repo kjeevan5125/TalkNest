@@ -355,58 +355,86 @@ export const leaveGroup = async (
     ]);
 
     res.status(200).json({
-      message:
-        "You left the group successfully",
-      conversation:
-        updatedConversation,
+      message: "You left the group successfully",
+      conversation: updatedConversation,
     });
   } catch (error) {
-    console.error(
-      "Leave group error:",
-      error.message
-    );
-
+    console.error("Leave group error:", error.message);
     res.status(500).json({
       message: "Server error",
     });
   }
 };
 
-export const getMyConversations = async (
-  req,
-  res
-) => {
+export const changeGroupAdmin = async (req, res) => {
   try {
-    const conversations =
-      await Conversation.find({
-        participants: req.user._id,
-      })
-        .populate(
-          "participants",
-          "name email isOnline"
-        )
-        .populate(
-          "groupAdmin",
-          "name email"
-        )
-        .populate({
-          path: "lastMessage",
-          select:
-            "sender text isDelivered isRead createdAt",
-        })
-        .sort({
-          updatedAt: -1,
-        });
+    const { userId } = req.body;
+    const { conversationId } = req.params;
 
-    res.status(200).json(
-      conversations
+    if (!userId) {
+      return res.status(400).json({
+        message: "User ID is required",
+      });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      isGroup: true,
+      groupAdmin: req.user._id,
+    });
+
+    if (!conversation) {
+      return res.status(403).json({
+        message: "Only the group admin can assign a new admin",
+      });
+    }
+
+    const isMember = conversation.participants.some(
+      (participant) => String(participant) === String(userId)
     );
+
+    if (!isMember) {
+      return res.status(400).json({
+        message: "User must be a member of the group to become admin",
+      });
+    }
+
+    conversation.groupAdmin = userId;
+    await conversation.save();
+
+    const updatedConversation = await populateConversation(conversationId);
+    publishGroupUpdate(
+      updatedConversation,
+      updatedConversation.participants.map((participant) => participant._id)
+    );
+
+    res.status(200).json(updatedConversation);
   } catch (error) {
-    console.error(
-      "Get conversations error:",
-      error.message
-    );
+    console.error("Change group admin error:", error.message);
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
 
+export const getMyConversations = async (req, res) => {
+  try {
+    const conversations = await Conversation.find({
+      participants: req.user._id,
+    })
+      .populate("participants", "name email isOnline")
+      .populate("groupAdmin", "name email")
+      .populate({
+        path: "lastMessage",
+        select: "sender text isDelivered isRead createdAt",
+      })
+      .sort({
+        updatedAt: -1,
+      });
+
+    res.status(200).json(conversations);
+  } catch (error) {
+    console.error("Get conversations error:", error.message);
     res.status(500).json({
       message: "Server error",
     });
