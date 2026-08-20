@@ -63,6 +63,17 @@ export const createOrGetConversation = async (req, res) => {
       "name email isOnline"
     );
 
+    const io = getSocketServer();
+
+    if (io) {
+      conversation.participants.forEach((participant) => {
+        io.to(String(participant._id)).emit(
+          "newConversation",
+          conversation
+        );
+      });
+    }
+
     res.status(200).json(conversation);
   } catch (error) {
     console.error(

@@ -3,12 +3,14 @@ import api from '../services/api'
 import socket from '../services/socket'
 import { useAuth } from '../context/authContext'
 import CreateGroup from './CreateGroup'
+import NewConversation from './NewConversation'
 
 function ConversationList({ selectedConversationId, onSelectConversation }) {
   const { user } = useAuth()
 
   const [conversations, setConversations] = useState([])
   const [showCreateGroup, setShowCreateGroup] = useState(false)
+  const [showNewConversation, setShowNewConversation] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -161,6 +163,26 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
     }
   }, [user])
 
+  const handleConversationCreated = (conversation) => {
+    setConversations((prevConversations) => {
+      const alreadyExists = prevConversations.some(
+        (item) => String(item._id) === String(conversation._id)
+      )
+
+      if (alreadyExists) {
+        return prevConversations.map((item) =>
+          String(item._id) === String(conversation._id)
+            ? conversation
+            : item
+        )
+      }
+
+      return [conversation, ...prevConversations]
+    })
+
+    onSelectConversation(conversation)
+  }
+
   const handleGroupCreated = (conversation) => {
     if (!conversation?._id) {
       return
@@ -206,14 +228,26 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
     <aside className="conversation-sidebar">
       <div className="conversation-header">
         <h3>Conversations</h3>
-        <button
-          type="button"
-          className="create-group-btn"
-          title="Create New Group"
-          onClick={() => setShowCreateGroup(true)}
-        >
-          +
-        </button>
+
+        <div className="conversation-header-actions">
+          <button
+            type="button"
+            className="create-group-btn"
+            title="Start New Conversation"
+            onClick={() => setShowNewConversation(true)}
+          >
+            +
+          </button>
+
+          <button
+            type="button"
+            className="create-group-btn"
+            title="Create New Group"
+            onClick={() => setShowCreateGroup(true)}
+          >
+            👥
+          </button>
+        </div>
       </div>
 
       <div className="conversation-search-container">
@@ -284,6 +318,13 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
           </div>
         )}
       </div>
+
+      {showNewConversation && (
+        <NewConversation
+          onClose={() => setShowNewConversation(false)}
+          onConversationCreated={handleConversationCreated}
+        />
+      )}
 
       {showCreateGroup && (
         <CreateGroup
