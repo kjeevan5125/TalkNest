@@ -110,6 +110,8 @@ function ChatLayout() {
     }
   }
 
+  const hasSelectedConversation = Boolean(selectedConversation)
+
   return (
     <div className="chat-layout">
       <header className="chat-header">
@@ -129,7 +131,13 @@ function ChatLayout() {
         </div>
       </header>
 
-      <div className="chat-body">
+      <div
+        className={`chat-body ${
+          hasSelectedConversation
+            ? 'has-selected-conversation'
+            : 'show-conversations'
+        }`}
+      >
         <ConversationList
           selectedConversationId={selectedConversation?._id}
           onSelectConversation={setSelectedConversation}
@@ -138,6 +146,7 @@ function ChatLayout() {
         <ChatWindow
           key={selectedConversation?._id || 'empty-chat'}
           conversation={selectedConversation}
+          onBack={() => setSelectedConversation(null)}
         />
       </div>
     </div>
