@@ -26,7 +26,6 @@ socket.on("connect", () => {
   }, 3000);
 });
 
-
 socket.on("connect_error", (error) => {
   console.log("Connection error:", error.message);
 });

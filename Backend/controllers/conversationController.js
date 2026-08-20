@@ -1,5 +1,21 @@
 import Conversation from "../models/Conversation.js";
 import User from "../models/user.js";
+import { getSocketServer } from "../config/socketServer.js";
+
+const populateConversation = (conversationId) =>
+  Conversation.findById(conversationId)
+    .populate("participants", "name email isOnline")
+    .populate("groupAdmin", "name email");
+
+const publishGroupUpdate = (conversation, recipientIds) => {
+  const io = getSocketServer();
+
+  if (!io) return;
+
+  [...new Set(recipientIds.map(String))].forEach((userId) => {
+    io.to(userId).emit("groupUpdated", conversation);
+  });
+};
 
 export const createOrGetConversation = async (req, res) => {
   try {
@@ -12,6 +28,20 @@ export const createOrGetConversation = async (req, res) => {
     }
 
     const currentUserId = req.user._id;
+
+    if (String(userId) === String(currentUserId)) {
+      return res.status(400).json({
+        message: "You cannot create a conversation with yourself",
+      });
+    }
+
+    const otherUser = await User.findById(userId).select("_id");
+
+    if (!otherUser) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
 
     let conversation = await Conversation.findOne({
       isGroup: false,
@@ -26,9 +56,19 @@ export const createOrGetConversation = async (req, res) => {
       });
     }
 
+    conversation = await Conversation.findById(
+      conversation._id
+    ).populate(
+      "participants",
+      "name email isOnline"
+    );
+
     res.status(200).json(conversation);
   } catch (error) {
-    console.error("Conversation error:", error.message);
+    console.error(
+      "Conversation error:",
+      error.message
+    );
 
     res.status(500).json({
       message: "Server error",
@@ -38,7 +78,8 @@ export const createOrGetConversation = async (req, res) => {
 
 export const createGroup = async (req, res) => {
   try {
-    const { groupName, participants } = req.body;
+    const { groupName, participants } =
+      req.body;
 
     if (!groupName || !groupName.trim()) {
       return res.status(400).json({
@@ -46,30 +87,59 @@ export const createGroup = async (req, res) => {
       });
     }
 
-    if (!Array.isArray(participants) || participants.length === 0) {
+    if (
+      !Array.isArray(participants) ||
+      participants.length === 0
+    ) {
       return res.status(400).json({
-        message: "At least one participant is required",
+        message:
+          "At least one participant is required",
       });
     }
 
-    const currentUserId = req.user._id.toString();
+    const currentUserId =
+      req.user._id.toString();
 
-    const participantIds = participants.map((id) => id.toString());
+    const participantIds =
+      participants.map((id) =>
+        id.toString()
+      );
 
-    if (!participantIds.includes(currentUserId)) {
-      participantIds.push(currentUserId);
+    if (
+      !participantIds.includes(
+        currentUserId
+      )
+    ) {
+      participantIds.push(
+        currentUserId
+      );
     }
 
-    const conversation = await Conversation.create({
-      participants: participantIds,
-      isGroup: true,
-      groupName: groupName.trim(),
-      groupAdmin: req.user._id,
-    });
+    const conversation =
+      await Conversation.create({
+        participants: participantIds,
+        isGroup: true,
+        groupName: groupName.trim(),
+        groupAdmin: req.user._id,
+      });
 
-    res.status(201).json(conversation);
+    const populatedConversation = await populateConversation(conversation._id);
+
+    const io = getSocketServer();
+    if (io) {
+      populatedConversation.participants.forEach((participant) => {
+        io.to(String(participant._id)).emit("newConversation", populatedConversation);
+      });
+    }
+
+    res.status(201).json(
+      populatedConversation
+    );
   } catch (error) {
-    console.error("Create group error:", error.message);
+    console.error(
+      "Create group error:",
+      error.message
+    );
 
     res.status(500).json({
       message: "Server error",
@@ -80,7 +150,8 @@ export const createGroup = async (req, res) => {
 export const addMember = async (req, res) => {
   try {
     const { userId } = req.body;
-    const { conversationId } = req.params;
+    const { conversationId } =
+      req.params;
 
     if (!userId) {
       return res.status(400).json({
@@ -88,19 +159,22 @@ export const addMember = async (req, res) => {
       });
     }
 
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      isGroup: true,
-      groupAdmin: req.user._id,
-    });
+    const conversation =
+      await Conversation.findOne({
+        _id: conversationId,
+        isGroup: true,
+        groupAdmin: req.user._id,
+      });
 
     if (!conversation) {
       return res.status(403).json({
-        message: "Only the group admin can add members",
+        message:
+          "Only the group admin can add members",
       });
     }
 
-    const user = await User.findById(userId);
+    const user =
+      await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -108,19 +182,37 @@ export const addMember = async (req, res) => {
       });
     }
 
-    if (conversation.participants.includes(userId)) {
+    const alreadyMember =
+      conversation.participants.some(
+        (participant) =>
+          String(participant) ===
+          String(userId)
+      );
+
+    if (alreadyMember) {
       return res.status(400).json({
-        message: "User is already a member of this group",
+        message:
+          "User is already a member of this group",
       });
     }
 
-    conversation.participants.push(userId);
+    conversation.participants.push(
+      userId
+    );
 
     await conversation.save();
 
-    res.status(200).json(conversation);
+    const updatedConversation = await populateConversation(conversationId);
+    publishGroupUpdate(updatedConversation, updatedConversation.participants.map((participant) => participant._id));
+
+    res.status(200).json(
+      updatedConversation
+    );
   } catch (error) {
-    console.error("Add member error:", error.message);
+    console.error(
+      "Add member error:",
+      error.message
+    );
 
     res.status(500).json({
       message: "Server error",
@@ -128,10 +220,14 @@ export const addMember = async (req, res) => {
   }
 };
 
-export const removeMember = async (req, res) => {
+export const removeMember = async (
+  req,
+  res
+) => {
   try {
     const { userId } = req.body;
-    const { conversationId } = req.params;
+    const { conversationId } =
+      req.params;
 
     if (!userId) {
       return res.status(400).json({
@@ -139,88 +235,69 @@ export const removeMember = async (req, res) => {
       });
     }
 
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      isGroup: true,
-      groupAdmin: req.user._id,
-    });
+    const conversation =
+      await Conversation.findOne({
+        _id: conversationId,
+        isGroup: true,
+        groupAdmin: req.user._id,
+      });
 
     if (!conversation) {
       return res.status(403).json({
-        message: "Only the group admin can remove members",
-      });
-    }
-
-    if (userId.toString() === req.user._id.toString()) {
-      return res.status(400).json({
-        message: "Group admin cannot remove themselves",
-      });
-    }
-
-    const isMember = conversation.participants.some(
-      (participant) => participant.toString() === userId.toString()
-    );
-
-    if (!isMember) {
-      return res.status(400).json({
-        message: "User is not a member of this group",
-      });
-    }
-
-    conversation.participants = conversation.participants.filter(
-      (participant) => participant.toString() !== userId.toString()
-    );
-
-    await conversation.save();
-
-    res.status(200).json(conversation);
-  } catch (error) {
-    console.error("Remove member error:", error.message);
-
-    res.status(500).json({
-      message: "Server error",
-    });
-  }
-};
-
-export const leaveGroup = async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      isGroup: true,
-      participants: req.user._id,
-    });
-
-    if (!conversation) {
-      return res.status(404).json({
-        message: "Group not found or you are not a member",
+        message:
+          "Only the group admin can remove members",
       });
     }
 
     if (
-      conversation.groupAdmin.toString() ===
-      req.user._id.toString()
+      String(userId) ===
+      String(req.user._id)
     ) {
       return res.status(400).json({
-        message: "Group admin cannot leave the group",
+        message:
+          "Group admin cannot remove themselves",
       });
     }
 
-    conversation.participants = conversation.participants.filter(
-      (participant) =>
-        participant.toString() !== req.user._id.toString()
-    );
+    const isMember =
+      conversation.participants.some(
+        (participant) =>
+          String(participant) ===
+          String(userId)
+      );
+
+    if (!isMember) {
+      return res.status(400).json({
+        message:
+          "User is not a member of this group",
+      });
+    }
+
+    const removedMemberId = String(userId);
+
+    conversation.participants =
+      conversation.participants.filter(
+        (participant) =>
+          String(participant) !==
+          String(userId)
+      );
 
     await conversation.save();
 
-    res.status(200).json({
-      message: "You left the group successfully",
-      conversation,
-    });
+    const updatedConversation = await populateConversation(conversationId);
+    publishGroupUpdate(updatedConversation, [
+      ...updatedConversation.participants.map((participant) => participant._id),
+      removedMemberId,
+    ]);
+
+    res.status(200).json(
+      updatedConversation
+    );
   } catch (error) {
-    console.error("Leave group error:", error.message);
+    console.error(
+      "Remove member error:",
+      error.message
+    );
 
     res.status(500).json({
       message: "Server error",
@@ -228,21 +305,107 @@ export const leaveGroup = async (req, res) => {
   }
 };
 
-export const getMyConversations = async (req, res) => {
+export const leaveGroup = async (
+  req,
+  res
+) => {
   try {
-    const conversations = await Conversation.find({
-      participants: req.user._id,
-    })
-      .populate("participants", "name email isOnline")
-      .populate({
-        path: "lastMessage",
-        select: "sender text isDelivered isRead createdAt",
-      })
-      .sort({ updatedAt: -1 });
+    const { conversationId } =
+      req.params;
 
-    res.status(200).json(conversations);
+    const conversation =
+      await Conversation.findOne({
+        _id: conversationId,
+        isGroup: true,
+        participants: req.user._id,
+      });
+
+    if (!conversation) {
+      return res.status(404).json({
+        message:
+          "Group not found or you are not a member",
+      });
+    }
+
+    if (
+      String(conversation.groupAdmin) ===
+      String(req.user._id)
+    ) {
+      return res.status(400).json({
+        message:
+          "Group admin cannot leave the group",
+      });
+    }
+
+    const leavingMemberId = String(req.user._id);
+
+    conversation.participants =
+      conversation.participants.filter(
+        (participant) =>
+          String(participant) !==
+          String(req.user._id)
+      );
+
+    await conversation.save();
+
+    const updatedConversation = await populateConversation(conversationId);
+    publishGroupUpdate(updatedConversation, [
+      ...updatedConversation.participants.map((participant) => participant._id),
+      leavingMemberId,
+    ]);
+
+    res.status(200).json({
+      message:
+        "You left the group successfully",
+      conversation:
+        updatedConversation,
+    });
   } catch (error) {
-    console.error("Get conversations error:", error.message);
+    console.error(
+      "Leave group error:",
+      error.message
+    );
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+export const getMyConversations = async (
+  req,
+  res
+) => {
+  try {
+    const conversations =
+      await Conversation.find({
+        participants: req.user._id,
+      })
+        .populate(
+          "participants",
+          "name email isOnline"
+        )
+        .populate(
+          "groupAdmin",
+          "name email"
+        )
+        .populate({
+          path: "lastMessage",
+          select:
+            "sender text isDelivered isRead createdAt",
+        })
+        .sort({
+          updatedAt: -1,
+        });
+
+    res.status(200).json(
+      conversations
+    );
+  } catch (error) {
+    console.error(
+      "Get conversations error:",
+      error.message
+    );
 
     res.status(500).json({
       message: "Server error",

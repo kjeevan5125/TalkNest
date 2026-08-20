@@ -21,7 +21,7 @@ socket.on("connect", () => {
 
   setTimeout(() => {
     console.log("TIMER FIRED");
-    
+
     socket.emit("sendMessage", {
       conversationId,
       text: "Testing message authorization",

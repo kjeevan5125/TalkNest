@@ -1,5 +1,5 @@
 import express from "express";
-import { 
+import {
     createOrGetConversation,
     createGroup,
     addMember,
@@ -8,7 +8,6 @@ import {
     getMyConversations,
 } from "../controllers/conversationController.js";
 import { protect } from "../middleware/authMiddleware.js";
-
 
 const router=express.Router();
 

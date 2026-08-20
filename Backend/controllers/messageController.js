@@ -5,19 +5,41 @@ export const sendMessage = async (req, res) => {
   try {
     const { conversationId, text } = req.body;
 
-    if (!conversationId || !text) {
+    const trimmedText = text?.trim();
+
+    if (!conversationId || !trimmedText) {
       return res.status(400).json({
         message: "Conversation ID and message text are required",
+      });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: req.user._id,
+    });
+
+    if (!conversation) {
+      return res.status(403).json({
+        message: "You are not a participant of this conversation",
       });
     }
 
     const message = await Message.create({
       conversation: conversationId,
       sender: req.user._id,
-      text,
+      text: trimmedText,
     });
 
-    res.status(201).json(message);
+    await Conversation.findByIdAndUpdate(conversationId, {
+      lastMessage: message._id,
+    });
+
+    const populatedMessage = await Message.findById(message._id).populate(
+      "sender",
+      "name email"
+    );
+
+    res.status(201).json(populatedMessage);
   } catch (error) {
     console.error("Send message error:", error.message);
 
