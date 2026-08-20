@@ -1,75 +1,98 @@
 import { useEffect, useRef, useState } from 'react'
 import api from '../services/api'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/authContext'
 import socket from '../services/socket'
+import GroupInfo from './GroupInfo'
 
 function ChatWindow({ conversation }) {
   const { user } = useAuth()
+
+  const currentUserId =
+    user?._id || user?.id
+
+  const otherUser =
+    conversation?.participants?.find(
+      (participant) =>
+        String(participant._id) !==
+        String(currentUserId)
+    )
 
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
-  const [isTyping, setIsTyping] = useState(false)
-  const [isOnline, setIsOnline] = useState(false)
+  const [typingUser, setTypingUser] = useState(null)
+  const [isOnline, setIsOnline] = useState(
+    () => Boolean(otherUser?.isOnline)
+  )
+  const [showGroupInfo, setShowGroupInfo] = useState(false)
 
   const messagesEndRef = useRef(null)
   const typingTimeoutRef = useRef(null)
-
-  // Used to distinguish initial chat loading
-  // from new messages arriving later
   const initialLoadRef = useRef(true)
-
-  // Reset scroll behavior whenever conversation changes
-  useEffect(() => {
-    initialLoadRef.current = true
-  }, [conversation])
 
   useEffect(() => {
     if (!conversation || conversation.isGroup) {
-      setIsOnline(false)
       return
     }
-
-    const otherUser = conversation.participants.find(
-      (participant) =>
-        String(participant._id) !==
-        String(user?._id || user?.id)
-    )
 
     if (!otherUser) {
       return
     }
 
-    setIsOnline(Boolean(otherUser.isOnline))
-
-    const handleUserOnline = ({ userId }) => {
-      if (String(userId) === String(otherUser._id)) {
+    const handleUserOnline = ({
+      userId,
+    }) => {
+      if (
+        String(userId) ===
+        String(otherUser._id)
+      ) {
         setIsOnline(true)
       }
     }
 
-    const handleUserOffline = ({ userId }) => {
-      if (String(userId) === String(otherUser._id)) {
+    const handleUserOffline = ({
+      userId,
+    }) => {
+      if (
+        String(userId) ===
+        String(otherUser._id)
+      ) {
         setIsOnline(false)
       }
     }
 
-    socket.on('userOnline', handleUserOnline)
-    socket.on('userOffline', handleUserOffline)
+    socket.on(
+      'userOnline',
+      handleUserOnline
+    )
+
+    socket.on(
+      'userOffline',
+      handleUserOffline
+    )
 
     return () => {
-      socket.off('userOnline', handleUserOnline)
-      socket.off('userOffline', handleUserOffline)
+      socket.off(
+        'userOnline',
+        handleUserOnline
+      )
+
+      socket.off(
+        'userOffline',
+        handleUserOffline
+      )
     }
-  }, [conversation, user])
+  }, [conversation, otherUser])
 
   useEffect(() => {
     if (!conversation) {
       return
     }
 
-    const handleNewMessage = (message) => {
+    const handleNewMessage = (
+      message
+    ) => {
       const messageConversationId =
         message.conversation?._id ||
         message.conversation
@@ -81,33 +104,40 @@ function ChatWindow({ conversation }) {
         return
       }
 
-      setMessages((prevMessages) => {
-        const existingMessage = prevMessages.find(
-          (item) =>
-            String(item._id) ===
-            String(message._id)
-        )
+      setMessages(
+        (prevMessages) => {
+          const existingMessage =
+            prevMessages.find(
+              (item) =>
+                String(item._id) ===
+                String(message._id)
+            )
 
-        if (existingMessage) {
-          return prevMessages.map((item) =>
-            String(item._id) ===
-            String(message._id)
-              ? {
-                  ...item,
-                  ...message,
-                  isDelivered:
-                    item.isDelivered ||
-                    message.isDelivered,
-                  isRead:
-                    item.isRead ||
-                    message.isRead,
-                }
-              : item
-          )
+          if (existingMessage) {
+            return prevMessages.map(
+              (item) =>
+                String(item._id) ===
+                String(message._id)
+                  ? {
+                      ...item,
+                      ...message,
+                      isDelivered:
+                        item.isDelivered ||
+                        message.isDelivered,
+                      isRead:
+                        item.isRead ||
+                        message.isRead,
+                    }
+                  : item
+            )
+          }
+
+          return [
+            ...prevMessages,
+            message,
+          ]
         }
-
-        return [...prevMessages, message]
-      })
+      )
 
       const currentUserId =
         user?._id || user?.id
@@ -128,39 +158,40 @@ function ChatWindow({ conversation }) {
       }
     }
 
-    const handleMessageDelivered = ({ messageId }) => {
-      setMessages((prevMessages) =>
-        prevMessages.map((message) =>
-          String(message._id) ===
-          String(messageId)
-            ? {
-                ...message,
-                isDelivered: true,
-              }
-            : message
-        )
-      )
-    }
-
-    const handleMessagesDelivered = ({ messageIds }) => {
-      setMessages((prevMessages) =>
-        prevMessages.map((message) =>
-          messageIds.some(
-            (id) =>
-              String(id) === String(message._id)
+    const handleMessageDelivered = ({
+      messageId,
+      userId,
+    }) => {
+      setMessages(
+        (prevMessages) =>
+          prevMessages.map(
+            (message) =>
+              String(message._id) ===
+              String(messageId)
+                ? {
+                    ...message,
+                    isDelivered: true,
+                    deliveredTo: [
+                      ...(message.deliveredTo || []),
+                      userId,
+                    ].filter(
+                      (id, index, allIds) =>
+                        allIds.findIndex(
+                          (item) =>
+                            String(item) ===
+                            String(id)
+                        ) === index
+                    ),
+                  }
+                : message
           )
-            ? {
-                ...message,
-                isDelivered: true,
-              }
-            : message
-        )
       )
     }
 
     const handleMessagesRead = ({
       conversationId,
       messageIds,
+      userId,
     }) => {
       if (
         String(conversationId) !==
@@ -169,20 +200,33 @@ function ChatWindow({ conversation }) {
         return
       }
 
-      setMessages((prevMessages) =>
-        prevMessages.map((message) =>
-          messageIds.some(
-            (id) =>
-              String(id) ===
-              String(message._id)
+      setMessages(
+        (prevMessages) =>
+          prevMessages.map(
+            (message) =>
+              messageIds.some(
+                (id) =>
+                  String(id) ===
+                  String(message._id)
+              )
+                ? {
+                    ...message,
+                    isDelivered: true,
+                    isRead: true,
+                    readBy: [
+                      ...(message.readBy || []),
+                      userId,
+                    ].filter(
+                      (id, index, allIds) =>
+                        allIds.findIndex(
+                          (item) =>
+                            String(item) ===
+                            String(id)
+                        ) === index
+                    ),
+                  }
+                : message
           )
-            ? {
-                ...message,
-                isDelivered: true,
-                isRead: true,
-              }
-            : message
-        )
       )
     }
 
@@ -194,11 +238,6 @@ function ChatWindow({ conversation }) {
     socket.on(
       'messageDelivered',
       handleMessageDelivered
-    )
-
-    socket.on(
-      'messagesDelivered',
-      handleMessagesDelivered
     )
 
     socket.on(
@@ -218,11 +257,6 @@ function ChatWindow({ conversation }) {
       )
 
       socket.off(
-        'messagesDelivered',
-        handleMessagesDelivered
-      )
-
-      socket.off(
         'messagesRead',
         handleMessagesRead
       )
@@ -231,11 +265,8 @@ function ChatWindow({ conversation }) {
 
   useEffect(() => {
     if (!conversation) {
-      setIsTyping(false)
       return
     }
-
-    setIsTyping(false)
 
     const handleUserTyping = ({
       userId,
@@ -258,7 +289,17 @@ function ChatWindow({ conversation }) {
         return
       }
 
-      setIsTyping(true)
+      const participant =
+        conversation.participants?.find(
+          (item) =>
+            String(item._id) ===
+            String(userId)
+        )
+
+      setTypingUser(
+        participant?.name ||
+        'Someone'
+      )
     }
 
     const handleUserStoppedTyping = ({
@@ -282,7 +323,7 @@ function ChatWindow({ conversation }) {
         return
       }
 
-      setIsTyping(false)
+      setTypingUser(null)
     }
 
     socket.on(
@@ -305,77 +346,111 @@ function ChatWindow({ conversation }) {
         'userStoppedTyping',
         handleUserStoppedTyping
       )
+
     }
   }, [conversation, user])
 
   useEffect(() => {
     if (!conversation) {
-      setMessages([])
       return
     }
 
-    setMessages([])
-    setIsTyping(false)
+    let cancelled = false
 
     const fetchMessages = async () => {
       try {
         setLoading(true)
 
-        const response = await api.get(
-          `/messages/${conversation._id}`
-        )
-
-        setMessages((prevMessages) => {
-          const messageMap = new Map()
-
-          response.data.forEach((message) => {
-            messageMap.set(
-              String(message._id),
-              message
-            )
-          })
-
-          prevMessages.forEach((message) => {
-            const id = String(message._id)
-
-            if (!messageMap.has(id)) {
-              messageMap.set(id, message)
-            } else {
-              const existing =
-                messageMap.get(id)
-
-              messageMap.set(id, {
-                ...existing,
-                ...message,
-                isDelivered:
-                  existing.isDelivered ||
-                  message.isDelivered,
-                isRead:
-                  existing.isRead ||
-                  message.isRead,
-              })
-            }
-          })
-
-          return Array.from(
-            messageMap.values()
-          ).sort(
-            (a, b) =>
-              new Date(a.createdAt) -
-              new Date(b.createdAt)
+        const response =
+          await api.get(
+            `/messages/${conversation._id}`
           )
-        })
+
+        if (cancelled) {
+          return
+        }
+
+        setMessages(
+          (prevMessages) => {
+            const messageMap =
+              new Map()
+
+            response.data.forEach(
+              (message) => {
+                messageMap.set(
+                  String(message._id),
+                  message
+                )
+              }
+            )
+
+            prevMessages.forEach(
+              (message) => {
+                const id =
+                  String(message._id)
+
+                if (
+                  !messageMap.has(id)
+                ) {
+                  messageMap.set(
+                    id,
+                    message
+                  )
+                } else {
+                  const existing =
+                    messageMap.get(
+                      id
+                    )
+
+                  messageMap.set(
+                    id,
+                    {
+                      ...existing,
+                      ...message,
+                      isDelivered:
+                        existing.isDelivered ||
+                        message.isDelivered,
+                      isRead:
+                        existing.isRead ||
+                        message.isRead,
+                    }
+                  )
+                }
+              }
+            )
+
+            return Array.from(
+              messageMap.values()
+            ).sort(
+              (a, b) =>
+                new Date(
+                  a.createdAt
+                ) -
+                new Date(
+                  b.createdAt
+                )
+            )
+          }
+        )
       } catch (error) {
-        console.error(
+        if (!cancelled) {
+          console.error(
           'Failed to fetch messages:',
           error
-        )
+          )
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
 
     fetchMessages()
+
+    return () => {
+      cancelled = true
+    }
   }, [conversation])
 
   useEffect(() => {
@@ -383,12 +458,13 @@ function ChatWindow({ conversation }) {
       return
     }
 
-    const markConversationAsRead = () => {
-      socket.emit(
-        'markAsRead',
-        conversation._id
-      )
-    }
+    const markConversationAsRead =
+      () => {
+        socket.emit(
+          'markAsRead',
+          conversation._id
+        )
+      }
 
     if (socket.connected) {
       markConversationAsRead()
@@ -407,33 +483,41 @@ function ChatWindow({ conversation }) {
     }
   }, [conversation])
 
-  // Scroll behavior
   useEffect(() => {
-    if (loading || !messages.length) {
+    if (
+      loading ||
+      !messages.length
+    ) {
       return
     }
 
-    if (initialLoadRef.current) {
-      // Opening a conversation:
-      // jump directly to the latest message
-      messagesEndRef.current?.scrollIntoView({
-        behavior: 'auto',
-      })
+    if (
+      initialLoadRef.current
+    ) {
+      messagesEndRef.current?.scrollIntoView(
+        {
+          behavior: 'auto',
+        }
+      )
 
-      initialLoadRef.current = false
+      initialLoadRef.current =
+        false
+
       return
     }
 
-    // New message:
-    // smoothly scroll to the bottom
-    messagesEndRef.current?.scrollIntoView({
-      behavior: 'smooth',
-    })
+    messagesEndRef.current?.scrollIntoView(
+      {
+        behavior: 'smooth',
+      }
+    )
   }, [messages, loading])
 
   useEffect(() => {
     return () => {
-      if (typingTimeoutRef.current) {
+      if (
+        typingTimeoutRef.current
+      ) {
         clearTimeout(
           typingTimeoutRef.current
         )
@@ -445,21 +529,18 @@ function ChatWindow({ conversation }) {
     return (
       <main className="chat-window">
         <div className="chat-window-empty">
-          <h2>Welcome to TalkNest</h2>
-          <p>Select a conversation to start chatting.</p>
+          <h2>
+            Welcome to TalkNest
+          </h2>
+
+          <p>
+            Select a conversation to
+            start chatting.
+          </p>
         </div>
       </main>
     )
   }
-
-  const otherUser =
-    conversation.participants.find(
-      (participant) =>
-        String(participant._id) !==
-          String(user?._id) &&
-        String(participant._id) !==
-          String(user?.id)
-    )
 
   const conversationName =
     conversation.isGroup
@@ -483,7 +564,9 @@ function ChatWindow({ conversation }) {
       conversation._id
     )
 
-    if (typingTimeoutRef.current) {
+    if (
+      typingTimeoutRef.current
+    ) {
       clearTimeout(
         typingTimeoutRef.current
       )
@@ -494,6 +577,7 @@ function ChatWindow({ conversation }) {
         'stopTyping',
         conversation._id
       )
+
       return
     }
 
@@ -523,11 +607,13 @@ function ChatWindow({ conversation }) {
       console.error(
         'Socket is not connected'
       )
+
       return
     }
 
     setText('')
     setSending(true)
+    setTypingUser(null)
 
     socket.emit(
       'stopTyping',
@@ -542,7 +628,9 @@ function ChatWindow({ conversation }) {
         text: trimmedText,
       },
       (response) => {
-        if (!response?.success) {
+        if (
+          !response?.success
+        ) {
           console.error(
             'Failed to send message:',
             response?.message ||
@@ -551,50 +639,8 @@ function ChatWindow({ conversation }) {
 
           setSending(false)
           setText(trimmedText)
+
           return
-        }
-
-        if (response.message) {
-          setMessages(
-            (prevMessages) => {
-              const existingMessage =
-                prevMessages.find(
-                  (message) =>
-                    String(message._id) ===
-                    String(
-                      response.message._id
-                    )
-                )
-
-              if (existingMessage) {
-                return prevMessages.map(
-                  (message) =>
-                    String(message._id) ===
-                    String(
-                      response.message._id
-                    )
-                      ? {
-                          ...message,
-                          ...response.message,
-                          isDelivered:
-                            message.isDelivered ||
-                            response.message
-                              .isDelivered,
-                          isRead:
-                            message.isRead ||
-                            response.message
-                              .isRead,
-                        }
-                      : message
-                )
-              }
-
-              return [
-                ...prevMessages,
-                response.message,
-              ]
-            }
-          )
         }
 
         setSending(false)
@@ -606,89 +652,163 @@ function ChatWindow({ conversation }) {
     <main className="chat-window">
 
       <div className="chat-window-header">
-        <h2>{conversationName}</h2>
 
-        {!conversation.isGroup && (
-          <span
-            className={
-              isOnline
-                ? 'online-status'
-                : 'offline-status'
+        <div>
+          <h2>
+            {conversationName}
+          </h2>
+
+          {!conversation.isGroup && (
+            <span
+              className={
+                isOnline
+                  ? 'online-status'
+                  : 'offline-status'
+              }
+            >
+              {isOnline
+                ? '● Online'
+                : 'Offline'}
+            </span>
+          )}
+        </div>
+
+        {conversation.isGroup && (
+          <button
+            type="button"
+            onClick={() =>
+              setShowGroupInfo(true)
             }
           >
-            {isOnline
-              ? '● Online'
-              : 'Offline'}
-          </span>
+            Group Info
+          </button>
         )}
+
       </div>
 
       <div className="chat-messages">
 
         {loading ? (
-          <p>Loading messages...</p>
+          <p>
+            Loading messages...
+          </p>
         ) : messages.length === 0 ? (
-          <p>No messages yet.</p>
+          <p>
+            No messages yet.
+          </p>
         ) : (
-          messages.map((message) => {
-            const currentUserId =
-              user?._id || user?.id
+          messages.map(
+            (message) => {
+              const currentUserId =
+                user?._id ||
+                user?.id
 
-            const senderId =
-              message.sender?._id ||
-              message.sender?.id ||
-              message.sender
+              const senderId =
+                message.sender?._id ||
+                message.sender?.id ||
+                message.sender
 
-            const isMine =
-              String(senderId) ===
-              String(currentUserId)
+              const isMine =
+                String(senderId) ===
+                String(currentUserId)
 
-            return (
-              <div
-                key={message._id}
-                className={`chat-message ${
-                  isMine
-                    ? 'sent'
-                    : 'received'
-                }`}
-              >
-                <p>
-                  {message.text}
-                </p>
+              const recipientIds =
+                conversation.participants
+                  .map(
+                    (participant) =>
+                      participant._id ||
+                      participant.id ||
+                      participant
+                  )
+                  .filter(
+                    (participantId) =>
+                      String(participantId) !==
+                      String(senderId)
+                  )
 
-                <span className="message-time">
-                  {new Date(
-                    message.createdAt
-                  ).toLocaleTimeString(
-                    [],
-                    {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }
-                  )}
+              const hasReceiptFromEveryone = (
+                receipts,
+                legacyValue
+              ) => {
+                if (!conversation.isGroup) {
+                  return receipts?.length > 0 || legacyValue
+                }
 
-                  {isMine && (
-                    <span className="message-status">
-                      {message.isRead
-                        ? ' ✓✓ 🔵'
-                        : message.isDelivered
-                          ? ' ✓✓'
-                          : ' ✓'}
-                    </span>
-                  )}
-                </span>
-              </div>
-            )
-          })
+                return (
+                  recipientIds.length > 0 &&
+                  recipientIds.every((recipientId) =>
+                    receipts?.some(
+                      (receiptId) =>
+                        String(receiptId) ===
+                        String(recipientId)
+                    )
+                  )
+                )
+              }
+
+              const isDeliveredToEveryone =
+                hasReceiptFromEveryone(
+                  message.deliveredTo,
+                  message.isDelivered
+                )
+
+              const isReadByEveryone =
+                hasReceiptFromEveryone(
+                  message.readBy,
+                  message.isRead
+                )
+
+              return (
+                <div
+                  key={message._id}
+                  className={`chat-message ${
+                    isMine
+                      ? 'sent'
+                      : 'received'
+                  }`}
+                >
+                  <p>
+                    {message.text}
+                  </p>
+
+                  <span className="message-time">
+
+                    {new Date(
+                      message.createdAt
+                    ).toLocaleTimeString(
+                      [],
+                      {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }
+                    )}
+
+                    {isMine && (
+                      <span className="message-status">
+                        {isReadByEveryone
+                          ? ' ✓✓ 🔵'
+                          : isDeliveredToEveryone
+                            ? ' ✓✓'
+                            : ' ✓'}
+                      </span>
+                    )}
+
+                  </span>
+                </div>
+              )
+            }
+          )
         )}
 
-        <div ref={messagesEndRef} />
+        <div
+          ref={messagesEndRef}
+        />
 
       </div>
 
-      {isTyping && (
+      {typingUser && (
         <div className="typing-indicator">
-          {conversationName} is typing...
+          {typingUser} is typing...
         </div>
       )}
 
@@ -698,6 +818,7 @@ function ChatWindow({ conversation }) {
           handleSendMessage
         }
       >
+
         <input
           type="text"
           placeholder="Type a message..."
@@ -713,7 +834,19 @@ function ChatWindow({ conversation }) {
             ? 'Sending...'
             : 'Send'}
         </button>
+
       </form>
+
+      {showGroupInfo && (
+        <GroupInfo
+          conversation={
+            conversation
+          }
+          onClose={() =>
+            setShowGroupInfo(false)
+          }
+        />
+      )}
 
     </main>
   )
