@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/authContext'
 import ConversationList from './ConversationList'
 import ChatWindow from './ChatWindow'
@@ -10,6 +10,7 @@ import socket, {
 
 function ChatLayout() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [, setSearchParams] = useSearchParams()
   const [selectedConversation, setSelectedConversation] = useState(null)
 
@@ -138,6 +139,7 @@ function ChatLayout() {
     const confirmed = window.confirm('Are you sure you want to logout?')
     if (confirmed) {
       logout()
+      navigate('/', { replace: true })
     }
   }
 

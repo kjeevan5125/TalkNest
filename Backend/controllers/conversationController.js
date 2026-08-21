@@ -1,11 +1,16 @@
 import Conversation from "../models/Conversation.js";
 import User from "../models/user.js";
+import Message from "../models/Message.js";
 import { getSocketServer } from "../config/socketServer.js";
 
 const populateConversation = (conversationId) =>
   Conversation.findById(conversationId)
     .populate("participants", "name email isOnline")
-    .populate("groupAdmin", "name email");
+    .populate("groupAdmin", "name email")
+    .populate({
+      path: "lastMessage",
+      select: "sender text isDelivered isRead createdAt",
+    });
 
 const publishGroupUpdate = (conversation, recipientIds) => {
   const io = getSocketServer();
@@ -56,12 +61,18 @@ export const createOrGetConversation = async (req, res) => {
       });
     }
 
-    conversation = await Conversation.findById(
-      conversation._id
-    ).populate(
-      "participants",
-      "name email isOnline"
-    );
+    conversation = await populateConversation(conversation._id);
+
+    const unreadCount = await Message.countDocuments({
+      conversation: conversation._id,
+      sender: { $ne: currentUserId },
+      readBy: { $ne: currentUserId },
+    });
+
+    const conversationData = {
+      ...conversation.toObject(),
+      unreadCount,
+    };
 
     const io = getSocketServer();
 
@@ -74,7 +85,7 @@ export const createOrGetConversation = async (req, res) => {
       });
     }
 
-    res.status(200).json(conversation);
+    res.status(200).json(conversationData);
   } catch (error) {
     console.error(
       "Conversation error:",
@@ -443,7 +454,38 @@ export const getMyConversations = async (req, res) => {
         updatedAt: -1,
       });
 
-    res.status(200).json(conversations);
+    const conversationIds = conversations.map((c) => c._id);
+
+    const unreadCounts = await Message.aggregate([
+      {
+        $match: {
+          conversation: { $in: conversationIds },
+          sender: { $ne: req.user._id },
+          readBy: { $ne: req.user._id },
+        },
+      },
+      {
+        $group: {
+          _id: "$conversation",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const unreadMap = new Map();
+    unreadCounts.forEach((item) => {
+      unreadMap.set(String(item._id), item.count);
+    });
+
+    const conversationsWithUnread = conversations.map((conv) => {
+      const convObj = conv.toObject();
+      return {
+        ...convObj,
+        unreadCount: unreadMap.get(String(conv._id)) || 0,
+      };
+    });
+
+    res.status(200).json(conversationsWithUnread);
   } catch (error) {
     console.error("Get conversations error:", error.message);
     res.status(500).json({

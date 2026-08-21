@@ -692,6 +692,22 @@ body {
   font-size: 13px;
 }
 
+.unread-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
 .chat-window {
   flex: 1;
   display: flex;
@@ -820,6 +836,32 @@ body {
 .chat-status-text {
   font-size: 13px;
   color: #94a3b8;
+}
+
+.new-messages-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 0 8px;
+}
+
+.new-messages-divider::before,
+.new-messages-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #3b82f6;
+  opacity: 0.5;
+}
+
+.new-messages-divider span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3b82f6;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .chat-message {

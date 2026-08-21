@@ -63,11 +63,19 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
     }
 
     const handleNewMessage = (message) => {
-      const conversationId = message.conversation?._id || message.conversation
+      const messageConversationId =
+        message.conversation?._id || message.conversation
+      const senderId =
+        message.sender?._id || message.sender?.id || message.sender
+      const currentUserId = user?._id || user?.id
+      const isFromOther = String(senderId) !== String(currentUserId)
+      const isCurrentlySelected =
+        String(messageConversationId) === String(selectedConversationId)
 
       setConversations((prevConversations) => {
         const exists = prevConversations.some(
-          (conversation) => String(conversation._id) === String(conversationId)
+          (conversation) =>
+            String(conversation._id) === String(messageConversationId)
         )
 
         if (!exists) {
@@ -75,11 +83,15 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
         }
 
         const updated = prevConversations.map((conversation) =>
-          String(conversation._id) === String(conversationId)
+          String(conversation._id) === String(messageConversationId)
             ? {
                 ...conversation,
                 lastMessage: message,
                 updatedAt: message.createdAt,
+                unreadCount:
+                  isCurrentlySelected || !isFromOther
+                    ? 0
+                    : (conversation.unreadCount || 0) + 1,
               }
             : conversation
         )
@@ -88,6 +100,22 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
           (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
         )
       })
+    }
+
+    const handleMessagesRead = ({ conversationId, userId }) => {
+      const currentUserId = user?._id || user?.id
+      if (String(userId) === String(currentUserId)) {
+        setConversations((prevConversations) =>
+          prevConversations.map((conversation) =>
+            String(conversation._id) === String(conversationId)
+              ? {
+                  ...conversation,
+                  unreadCount: 0,
+                }
+              : conversation
+          )
+        )
+      }
     }
 
     const handleNewConversation = (conversation) => {
@@ -101,10 +129,31 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
         )
 
         if (alreadyExists) {
-          return prevConversations
+          return prevConversations.map((item) =>
+            String(item._id) === String(conversation._id)
+              ? {
+                  ...item,
+                  ...conversation,
+                  lastMessage:
+                    conversation.lastMessage?.text
+                      ? conversation.lastMessage
+                      : item.lastMessage || conversation.lastMessage,
+                  unreadCount:
+                    typeof conversation.unreadCount === 'number'
+                      ? conversation.unreadCount
+                      : item.unreadCount || 0,
+                }
+              : item
+          )
         }
 
-        return [conversation, ...prevConversations]
+        return [
+          {
+            ...conversation,
+            unreadCount: conversation.unreadCount || 0,
+          },
+          ...prevConversations,
+        ]
       })
     }
 
@@ -133,12 +182,31 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
         }
 
         if (!exists) {
-          return [conversation, ...prevConversations]
+          return [
+            {
+              ...conversation,
+              unreadCount: conversation.unreadCount || 0,
+            },
+            ...prevConversations,
+          ]
         }
 
         return prevConversations
           .map((item) =>
-            String(item._id) === String(conversation._id) ? conversation : item
+            String(item._id) === String(conversation._id)
+              ? {
+                  ...item,
+                  ...conversation,
+                  lastMessage:
+                    conversation.lastMessage?.text
+                      ? conversation.lastMessage
+                      : item.lastMessage || conversation.lastMessage,
+                  unreadCount:
+                    typeof conversation.unreadCount === 'number'
+                      ? conversation.unreadCount
+                      : item.unreadCount || 0,
+                }
+              : item
           )
           .sort(
             (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
@@ -149,6 +217,7 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
     fetchConversations()
 
     socket.on('newMessage', handleNewMessage)
+    socket.on('messagesRead', handleMessagesRead)
     socket.on('userOnline', handleUserOnline)
     socket.on('userOffline', handleUserOffline)
     socket.on('newConversation', handleNewConversation)
@@ -156,12 +225,30 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
 
     return () => {
       socket.off('newMessage', handleNewMessage)
+      socket.off('messagesRead', handleMessagesRead)
       socket.off('userOnline', handleUserOnline)
       socket.off('userOffline', handleUserOffline)
       socket.off('newConversation', handleNewConversation)
       socket.off('groupUpdated', handleGroupUpdated)
     }
-  }, [user])
+  }, [user, selectedConversationId])
+
+  useEffect(() => {
+    if (!selectedConversationId) {
+      return
+    }
+
+    setConversations((prevConversations) =>
+      prevConversations.map((conversation) =>
+        String(conversation._id) === String(selectedConversationId)
+          ? {
+              ...conversation,
+              unreadCount: 0,
+            }
+          : conversation
+      )
+    )
+  }, [selectedConversationId])
 
   const handleConversationCreated = (conversation) => {
     setConversations((prevConversations) => {
@@ -172,7 +259,14 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
       if (alreadyExists) {
         return prevConversations.map((item) =>
           String(item._id) === String(conversation._id)
-            ? conversation
+            ? {
+                ...item,
+                ...conversation,
+                lastMessage:
+                  conversation.lastMessage?.text
+                    ? conversation.lastMessage
+                    : item.lastMessage || conversation.lastMessage,
+              }
             : item
         )
       }
@@ -308,6 +402,14 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
                   {conversation.lastMessage?.text || 'No messages yet'}
                 </p>
               </div>
+
+              {conversation.unreadCount > 0 && (
+                <span className="unread-badge">
+                  {conversation.unreadCount > 99
+                    ? '99+'
+                    : conversation.unreadCount}
+                </span>
+              )}
             </div>
           )
         })}

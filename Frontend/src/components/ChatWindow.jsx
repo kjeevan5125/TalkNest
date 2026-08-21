@@ -22,8 +22,10 @@ function ChatWindow({ conversation, onBack }) {
   const [showGroupInfo, setShowGroupInfo] = useState(false)
 
   const messagesEndRef = useRef(null)
+  const firstUnreadRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const initialLoadRef = useRef(true)
+  const [firstUnreadIndex, setFirstUnreadIndex] = useState(-1)
 
   useEffect(() => {
     if (!conversation || conversation.isGroup || !otherUser) {
@@ -289,13 +291,33 @@ function ChatWindow({ conversation, onBack }) {
     }
 
     if (initialLoadRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      const unreadIdx = messages.findIndex((msg) => {
+        const senderId =
+          msg.sender?._id || msg.sender?.id || msg.sender
+        const isFromOther = String(senderId) !== String(currentUserId)
+        const isUnread =
+          isFromOther &&
+          !msg.readBy?.some(
+            (id) => String(id) === String(currentUserId)
+          ) &&
+          !msg.isRead
+        return isUnread
+      })
+      setFirstUnreadIndex(unreadIdx)
+
+      if (unreadIdx > 0) {
+        setTimeout(() => {
+          firstUnreadRef.current?.scrollIntoView({ behavior: 'auto' })
+        }, 50)
+      } else {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      }
       initialLoadRef.current = false
       return
     }
 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  }, [messages, loading, currentUserId])
 
   useEffect(() => {
     return () => {
@@ -443,7 +465,7 @@ function ChatWindow({ conversation, onBack }) {
             <p className="chat-status-text">No messages yet. Say hello! 👋</p>
           </div>
         ) : (
-          messages.map((message) => {
+          messages.map((message, index) => {
             const senderId =
               message.sender?._id || message.sender?.id || message.sender
 
@@ -483,11 +505,22 @@ function ChatWindow({ conversation, onBack }) {
               message.isRead
             )
 
+            const showUnreadDivider =
+              firstUnreadIndex > 0 && index === firstUnreadIndex
+
             return (
-              <div
-                key={message._id}
-                className={`chat-message ${isMine ? 'sent' : 'received'}`}
-              >
+              <div key={message._id}>
+                {showUnreadDivider && (
+                  <div
+                    className="new-messages-divider"
+                    ref={firstUnreadRef}
+                  >
+                    <span>New Messages</span>
+                  </div>
+                )}
+                <div
+                  className={`chat-message ${isMine ? 'sent' : 'received'}`}
+                >
                 {conversation.isGroup && !isMine && (
                   <span className="chat-message-sender">
                     {message.sender?.name || 'Member'}
@@ -517,6 +550,7 @@ function ChatWindow({ conversation, onBack }) {
                         : '✓'}
                     </span>
                   )}
+                </div>
                 </div>
               </div>
             )

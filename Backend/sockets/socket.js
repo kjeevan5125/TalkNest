@@ -382,7 +382,11 @@ const initializeSocket = (server) => {
                 .populate(
                   "groupAdmin",
                   "name email"
-                );
+                )
+                .populate({
+                  path: "lastMessage",
+                  select: "sender text isDelivered isRead createdAt",
+                });
 
             if (!conversation) {
               return;
@@ -460,7 +464,11 @@ const initializeSocket = (server) => {
                 .populate(
                   "groupAdmin",
                   "name email"
-                );
+                )
+                .populate({
+                  path: "lastMessage",
+                  select: "sender text isDelivered isRead createdAt",
+                });
 
             const recipients = [
               ...new Set([
