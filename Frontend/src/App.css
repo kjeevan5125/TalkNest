@@ -838,6 +838,23 @@ body {
   color: #94a3b8;
 }
 
+.message-container {
+  width: 100%;
+}
+
+.chat-message-row {
+  width: 100%;
+  display: flex;
+}
+
+.chat-message-row.received {
+  justify-content: flex-start;
+}
+
+.chat-message-row.sent {
+  justify-content: flex-end;
+}
+
 .new-messages-divider {
   display: flex;
   align-items: center;
@@ -876,7 +893,6 @@ body {
 }
 
 .chat-message.received {
-  align-self: flex-start;
   background: #ffffff;
   color: #0f172a;
   border: 1px solid #e2e8f0;
@@ -885,7 +901,6 @@ body {
 }
 
 .chat-message.sent {
-  align-self: flex-end;
   background: #0f172a;
   color: #ffffff;
   border-radius: 16px 16px 4px 16px;
@@ -957,10 +972,14 @@ body {
 }
 
 @keyframes typingBlink {
-  0%, 80%, 100% {
+
+  0%,
+  80%,
+  100% {
     opacity: 0.2;
     transform: scale(0.8);
   }
+
   40% {
     opacity: 1;
     transform: scale(1.1);
@@ -1410,7 +1429,6 @@ body {
   font-size: 13px;
 }
 
-
 .auth-back-link {
   display: inline-block;
   margin-bottom: 20px;
@@ -1532,7 +1550,6 @@ body {
   .chat-body {
     position: relative;
   }
-
 
   .chat-body.show-conversations .conversation-sidebar {
     display: flex;
@@ -1824,13 +1841,11 @@ body {
   }
 }
 
-
 .conversation-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
 
 .new-conversation-overlay {
   position: fixed;

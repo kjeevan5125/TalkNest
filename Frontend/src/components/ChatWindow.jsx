@@ -38,7 +38,6 @@ function ChatWindow({ conversation, onBack }) {
       }
     }
 
-
     const handleUserOffline = ({ userId }) => {
       if (String(userId) === String(otherUser._id)) {
         setIsOnline(false)
@@ -76,11 +75,11 @@ function ChatWindow({ conversation, onBack }) {
           return prevMessages.map((item) =>
             String(item._id) === String(message._id)
               ? {
-                  ...item,
-                  ...message,
-                  isDelivered: item.isDelivered || message.isDelivered,
-                  isRead: item.isRead || message.isRead,
-                }
+                ...item,
+                ...message,
+                isDelivered: item.isDelivered || message.isDelivered,
+                isRead: item.isRead || message.isRead,
+              }
               : item
           )
         }
@@ -89,6 +88,7 @@ function ChatWindow({ conversation, onBack }) {
       })
 
       const currentUserId = user?._id || user?.id
+
       const senderId =
         message.sender?._id || message.sender?.id || message.sender
 
@@ -102,17 +102,18 @@ function ChatWindow({ conversation, onBack }) {
         prevMessages.map((message) =>
           String(message._id) === String(messageId)
             ? {
-                ...message,
-                isDelivered: true,
-                deliveredTo: [
-                  ...(message.deliveredTo || []),
-                  userId,
-                ].filter(
-                  (id, index, allIds) =>
-                    allIds.findIndex((item) => String(item) === String(id)) ===
-                    index
-                ),
-              }
+              ...message,
+              isDelivered: true,
+              deliveredTo: [
+                ...(message.deliveredTo || []),
+                userId,
+              ].filter(
+                (id, index, allIds) =>
+                  allIds.findIndex(
+                    (item) => String(item) === String(id)
+                  ) === index
+              ),
+            }
             : message
         )
       )
@@ -127,18 +128,19 @@ function ChatWindow({ conversation, onBack }) {
         prevMessages.map((message) =>
           messageIds.some((id) => String(id) === String(message._id))
             ? {
-                ...message,
-                isDelivered: true,
-                isRead: true,
-                readBy: [
-                  ...(message.readBy || []),
-                  userId,
-                ].filter(
-                  (id, index, allIds) =>
-                    allIds.findIndex((item) => String(item) === String(id)) ===
-                    index
-                ),
-              }
+              ...message,
+              isDelivered: true,
+              isRead: true,
+              readBy: [
+                ...(message.readBy || []),
+                userId,
+              ].filter(
+                (id, index, allIds) =>
+                  allIds.findIndex(
+                    (item) => String(item) === String(id)
+                  ) === index
+              ),
+            }
             : message
         )
       )
@@ -294,29 +296,41 @@ function ChatWindow({ conversation, onBack }) {
       const unreadIdx = messages.findIndex((msg) => {
         const senderId =
           msg.sender?._id || msg.sender?.id || msg.sender
-        const isFromOther = String(senderId) !== String(currentUserId)
+
+        const isFromOther =
+          String(senderId) !== String(currentUserId)
+
         const isUnread =
           isFromOther &&
           !msg.readBy?.some(
             (id) => String(id) === String(currentUserId)
           ) &&
           !msg.isRead
+
         return isUnread
       })
+
       setFirstUnreadIndex(unreadIdx)
 
       if (unreadIdx > 0) {
         setTimeout(() => {
-          firstUnreadRef.current?.scrollIntoView({ behavior: 'auto' })
+          firstUnreadRef.current?.scrollIntoView({
+            behavior: 'auto',
+          })
         }, 50)
       } else {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+        messagesEndRef.current?.scrollIntoView({
+          behavior: 'auto',
+        })
       }
+
       initialLoadRef.current = false
       return
     }
 
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+    })
   }, [messages, loading, currentUserId])
 
   useEffect(() => {
@@ -333,7 +347,9 @@ function ChatWindow({ conversation, onBack }) {
         <div className="chat-window-empty">
           <div className="empty-chat-icon">💬</div>
           <h2>Welcome to TalkNest</h2>
-          <p>Select a conversation from the sidebar to start chatting.</p>
+          <p>
+            Select a conversation from the sidebar to start chatting.
+          </p>
         </div>
       </main>
     )
@@ -371,6 +387,7 @@ function ChatWindow({ conversation, onBack }) {
     e.preventDefault()
 
     const trimmedText = text.trim()
+
     if (!trimmedText || sending) {
       return
     }
@@ -398,8 +415,10 @@ function ChatWindow({ conversation, onBack }) {
             'Failed to send message:',
             response?.message || 'Unknown socket error'
           )
+
           setSending(false)
           setText(trimmedText)
+
           return
         }
 
@@ -434,9 +453,8 @@ function ChatWindow({ conversation, onBack }) {
               </span>
             ) : (
               <span
-                className={`chat-header-subtitle ${
-                  isOnline ? 'online' : 'offline'
-                }`}
+                className={`chat-header-subtitle ${isOnline ? 'online' : 'offline'
+                  }`}
               >
                 {isOnline ? '● Online' : 'Offline'}
               </span>
@@ -458,29 +476,42 @@ function ChatWindow({ conversation, onBack }) {
       <div className="chat-messages">
         {loading ? (
           <div className="chat-status-container">
-            <p className="chat-status-text">Loading messages...</p>
+            <p className="chat-status-text">
+              Loading messages...
+            </p>
           </div>
         ) : messages.length === 0 ? (
           <div className="chat-status-container">
-            <p className="chat-status-text">No messages yet. Say hello! 👋</p>
+            <p className="chat-status-text">
+              No messages yet. Say hello! 👋
+            </p>
           </div>
         ) : (
           messages.map((message, index) => {
             const senderId =
-              message.sender?._id || message.sender?.id || message.sender
+              message.sender?._id ||
+              message.sender?.id ||
+              message.sender
 
-            const isMine = String(senderId) === String(currentUserId)
+            const isMine =
+              String(senderId) === String(currentUserId)
 
             const recipientIds = conversation.participants
               .map(
                 (participant) =>
-                  participant._id || participant.id || participant
+                  participant._id ||
+                  participant.id ||
+                  participant
               )
               .filter(
-                (participantId) => String(participantId) !== String(senderId)
+                (participantId) =>
+                  String(participantId) !== String(senderId)
               )
 
-            const hasReceiptFromEveryone = (receipts, legacyValue) => {
+            const hasReceiptFromEveryone = (
+              receipts,
+              legacyValue
+            ) => {
               if (!conversation.isGroup) {
                 return receipts?.length > 0 || legacyValue
               }
@@ -489,27 +520,34 @@ function ChatWindow({ conversation, onBack }) {
                 recipientIds.length > 0 &&
                 recipientIds.every((recipientId) =>
                   receipts?.some(
-                    (receiptId) => String(receiptId) === String(recipientId)
+                    (receiptId) =>
+                      String(receiptId) === String(recipientId)
                   )
                 )
               )
             }
 
-            const isDeliveredToEveryone = hasReceiptFromEveryone(
-              message.deliveredTo,
-              message.isDelivered
-            )
+            const isDeliveredToEveryone =
+              hasReceiptFromEveryone(
+                message.deliveredTo,
+                message.isDelivered
+              )
 
-            const isReadByEveryone = hasReceiptFromEveryone(
-              message.readBy,
-              message.isRead
-            )
+            const isReadByEveryone =
+              hasReceiptFromEveryone(
+                message.readBy,
+                message.isRead
+              )
 
             const showUnreadDivider =
-              firstUnreadIndex > 0 && index === firstUnreadIndex
+              firstUnreadIndex > 0 &&
+              index === firstUnreadIndex
 
             return (
-              <div key={message._id}>
+              <div
+                key={message._id}
+                className="message-container"
+              >
                 {showUnreadDivider && (
                   <div
                     className="new-messages-divider"
@@ -518,39 +556,46 @@ function ChatWindow({ conversation, onBack }) {
                     <span>New Messages</span>
                   </div>
                 )}
+
                 <div
-                  className={`chat-message ${isMine ? 'sent' : 'received'}`}
+                  className={`chat-message-row ${isMine ? 'sent' : 'received'
+                    }`}
                 >
-                {conversation.isGroup && !isMine && (
-                  <span className="chat-message-sender">
-                    {message.sender?.name || 'Member'}
-                  </span>
-                )}
+                  <div className="chat-message">
+                    {conversation.isGroup && !isMine && (
+                      <span className="chat-message-sender">
+                        {message.sender?.name || 'Member'}
+                      </span>
+                    )}
 
-                <p className="chat-message-text">{message.text}</p>
+                    <p className="chat-message-text">
+                      {message.text}
+                    </p>
 
-                <div className="message-meta">
-                  <span className="message-time">
-                    {new Date(message.createdAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
+                    <div className="message-meta">
+                      <span className="message-time">
+                        {new Date(
+                          message.createdAt
+                        ).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
 
-                  {isMine && (
-                    <span
-                      className={`message-status ${
-                        isReadByEveryone ? 'read' : ''
-                      }`}
-                    >
-                      {isReadByEveryone
-                        ? '✓✓'
-                        : isDeliveredToEveryone
-                        ? '✓✓'
-                        : '✓'}
-                    </span>
-                  )}
-                </div>
+                      {isMine && (
+                        <span
+                          className={`message-status ${isReadByEveryone ? 'read' : ''
+                            }`}
+                        >
+                          {isReadByEveryone
+                            ? '✓✓'
+                            : isDeliveredToEveryone
+                              ? '✓✓'
+                              : '✓'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )
@@ -569,7 +614,10 @@ function ChatWindow({ conversation, onBack }) {
         </div>
       )}
 
-      <form className="chat-input-form" onSubmit={handleSendMessage}>
+      <form
+        className="chat-input-form"
+        onSubmit={handleSendMessage}
+      >
         <input
           type="text"
           className="chat-input-field"
