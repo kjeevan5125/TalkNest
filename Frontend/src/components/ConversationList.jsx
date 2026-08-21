@@ -13,7 +13,19 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
   const [showNewConversation, setShowNewConversation] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
+  /*
+   * Fetch conversations when the logged-in user changes.
+   *
+   * IMPORTANT:
+   * This does NOT depend on selectedConversationId.
+   * Otherwise opening/backing out of a chat would fetch the
+   * conversations again and could bring an old unreadCount back.
+   */
   useEffect(() => {
+    if (!user) {
+      return
+    }
+
     const fetchConversations = async () => {
       try {
         const response = await api.get('/conversations')
@@ -22,16 +34,31 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
         const conversationData = Array.isArray(data)
           ? data
           : Array.isArray(data?.conversations)
-          ? data.conversations
-          : Array.isArray(data?.data)
-          ? data.data
-          : []
+            ? data.conversations
+            : Array.isArray(data?.data)
+              ? data.data
+              : []
 
         setConversations(conversationData)
       } catch (error) {
         console.error('Failed to fetch conversations:', error)
         setConversations([])
       }
+    }
+
+    fetchConversations()
+  }, [user])
+
+  /*
+   * Socket listeners.
+   *
+   * This effect DOES depend on selectedConversationId because
+   * we need to know whether an incoming message belongs to
+   * the chat that is currently open.
+   */
+  useEffect(() => {
+    if (!user) {
+      return
     }
 
     const handleUserOnline = ({ userId }) => {
@@ -65,57 +92,90 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
     const handleNewMessage = (message) => {
       const messageConversationId =
         message.conversation?._id || message.conversation
+
       const senderId =
-        message.sender?._id || message.sender?.id || message.sender
+        message.sender?._id ||
+        message.sender?.id ||
+        message.sender
+
       const currentUserId = user?._id || user?.id
-      const isFromOther = String(senderId) !== String(currentUserId)
+
+      const isFromOther =
+        String(senderId) !== String(currentUserId)
+
       const isCurrentlySelected =
-        String(messageConversationId) === String(selectedConversationId)
+        String(messageConversationId) ===
+        String(selectedConversationId)
 
       setConversations((prevConversations) => {
         const exists = prevConversations.some(
           (conversation) =>
-            String(conversation._id) === String(messageConversationId)
+            String(conversation._id) ===
+            String(messageConversationId)
         )
 
         if (!exists) {
           return prevConversations
         }
 
-        const updated = prevConversations.map((conversation) =>
-          String(conversation._id) === String(messageConversationId)
-            ? {
+        const updated = prevConversations.map(
+          (conversation) =>
+            String(conversation._id) ===
+              String(messageConversationId)
+              ? {
                 ...conversation,
                 lastMessage: message,
                 updatedAt: message.createdAt,
+
+                /*
+                 * If this chat is currently open,
+                 * don't show an unread badge.
+                 *
+                 * If the message is our own message,
+                 * don't show an unread badge.
+                 *
+                 * Otherwise increase the unread count.
+                 */
                 unreadCount:
                   isCurrentlySelected || !isFromOther
                     ? 0
                     : (conversation.unreadCount || 0) + 1,
               }
-            : conversation
+              : conversation
         )
 
         return updated.sort(
-          (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+          (a, b) =>
+            new Date(b.updatedAt || 0) -
+            new Date(a.updatedAt || 0)
         )
       })
     }
 
-    const handleMessagesRead = ({ conversationId, userId }) => {
+    const handleMessagesRead = ({
+      conversationId,
+      userId,
+    }) => {
       const currentUserId = user?._id || user?.id
-      if (String(userId) === String(currentUserId)) {
-        setConversations((prevConversations) =>
-          prevConversations.map((conversation) =>
-            String(conversation._id) === String(conversationId)
-              ? {
-                  ...conversation,
-                  unreadCount: 0,
-                }
-              : conversation
-          )
-        )
+
+      if (
+        String(userId) !==
+        String(currentUserId)
+      ) {
+        return
       }
+
+      setConversations((prevConversations) =>
+        prevConversations.map((conversation) =>
+          String(conversation._id) ===
+            String(conversationId)
+            ? {
+              ...conversation,
+              unreadCount: 0,
+            }
+            : conversation
+        )
+      )
     }
 
     const handleNewConversation = (conversation) => {
@@ -124,25 +184,32 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
       }
 
       setConversations((prevConversations) => {
-        const alreadyExists = prevConversations.some(
-          (item) => String(item._id) === String(conversation._id)
-        )
+        const alreadyExists =
+          prevConversations.some(
+            (item) =>
+              String(item._id) ===
+              String(conversation._id)
+          )
 
         if (alreadyExists) {
           return prevConversations.map((item) =>
-            String(item._id) === String(conversation._id)
+            String(item._id) ===
+              String(conversation._id)
               ? {
-                  ...item,
-                  ...conversation,
-                  lastMessage:
-                    conversation.lastMessage?.text
-                      ? conversation.lastMessage
-                      : item.lastMessage || conversation.lastMessage,
-                  unreadCount:
-                    typeof conversation.unreadCount === 'number'
-                      ? conversation.unreadCount
-                      : item.unreadCount || 0,
-                }
+                ...item,
+                ...conversation,
+                lastMessage:
+                  conversation.lastMessage?.text
+                    ? conversation.lastMessage
+                    : item.lastMessage ||
+                    conversation.lastMessage,
+
+                unreadCount:
+                  typeof conversation.unreadCount ===
+                    'number'
+                    ? conversation.unreadCount
+                    : item.unreadCount || 0,
+              }
               : item
           )
         }
@@ -150,7 +217,8 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
         return [
           {
             ...conversation,
-            unreadCount: conversation.unreadCount || 0,
+            unreadCount:
+              conversation.unreadCount || 0,
           },
           ...prevConversations,
         ]
@@ -164,20 +232,29 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
 
       const currentUserId = user?._id || user?.id
 
-      const isMember = conversation.participants?.some(
-        (participant) =>
-          String(participant._id || participant.id || participant) ===
-          String(currentUserId)
-      )
+      const isMember =
+        conversation.participants?.some(
+          (participant) =>
+            String(
+              participant._id ||
+              participant.id ||
+              participant
+            ) === String(currentUserId)
+        )
 
       setConversations((prevConversations) => {
-        const exists = prevConversations.some(
-          (item) => String(item._id) === String(conversation._id)
-        )
+        const exists =
+          prevConversations.some(
+            (item) =>
+              String(item._id) ===
+              String(conversation._id)
+          )
 
         if (!isMember) {
           return prevConversations.filter(
-            (item) => String(item._id) !== String(conversation._id)
+            (item) =>
+              String(item._id) !==
+              String(conversation._id)
           )
         }
 
@@ -185,7 +262,8 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
           return [
             {
               ...conversation,
-              unreadCount: conversation.unreadCount || 0,
+              unreadCount:
+                conversation.unreadCount || 0,
             },
             ...prevConversations,
           ]
@@ -193,28 +271,39 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
 
         return prevConversations
           .map((item) =>
-            String(item._id) === String(conversation._id)
+            String(item._id) ===
+              String(conversation._id)
               ? {
-                  ...item,
-                  ...conversation,
-                  lastMessage:
-                    conversation.lastMessage?.text
-                      ? conversation.lastMessage
-                      : item.lastMessage || conversation.lastMessage,
-                  unreadCount:
-                    typeof conversation.unreadCount === 'number'
+                ...item,
+                ...conversation,
+                lastMessage:
+                  conversation.lastMessage?.text
+                    ? conversation.lastMessage
+                    : item.lastMessage ||
+                    conversation.lastMessage,
+
+                /*
+                 * If this group is currently open,
+                 * keep unread count at zero.
+                 */
+                unreadCount:
+                  String(selectedConversationId) ===
+                    String(conversation._id)
+                    ? 0
+                    : typeof conversation.unreadCount ===
+                      'number'
                       ? conversation.unreadCount
                       : item.unreadCount || 0,
-                }
+              }
               : item
           )
           .sort(
-            (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+            (a, b) =>
+              new Date(b.updatedAt || 0) -
+              new Date(a.updatedAt || 0)
           )
       })
     }
-
-    fetchConversations()
 
     socket.on('newMessage', handleNewMessage)
     socket.on('messagesRead', handleMessagesRead)
@@ -233,6 +322,10 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
     }
   }, [user, selectedConversationId])
 
+  /*
+   * Whenever a conversation becomes selected,
+   * immediately clear its unread badge.
+   */
   useEffect(() => {
     if (!selectedConversationId) {
       return
@@ -240,11 +333,12 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
 
     setConversations((prevConversations) =>
       prevConversations.map((conversation) =>
-        String(conversation._id) === String(selectedConversationId)
+        String(conversation._id) ===
+          String(selectedConversationId)
           ? {
-              ...conversation,
-              unreadCount: 0,
-            }
+            ...conversation,
+            unreadCount: 0,
+          }
           : conversation
       )
     )
@@ -252,26 +346,39 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
 
   const handleConversationCreated = (conversation) => {
     setConversations((prevConversations) => {
-      const alreadyExists = prevConversations.some(
-        (item) => String(item._id) === String(conversation._id)
-      )
+      const alreadyExists =
+        prevConversations.some(
+          (item) =>
+            String(item._id) ===
+            String(conversation._id)
+        )
 
       if (alreadyExists) {
         return prevConversations.map((item) =>
-          String(item._id) === String(conversation._id)
+          String(item._id) ===
+            String(conversation._id)
             ? {
-                ...item,
-                ...conversation,
-                lastMessage:
-                  conversation.lastMessage?.text
-                    ? conversation.lastMessage
-                    : item.lastMessage || conversation.lastMessage,
-              }
+              ...item,
+              ...conversation,
+              lastMessage:
+                conversation.lastMessage?.text
+                  ? conversation.lastMessage
+                  : item.lastMessage ||
+                  conversation.lastMessage,
+
+              unreadCount: 0,
+            }
             : item
         )
       }
 
-      return [conversation, ...prevConversations]
+      return [
+        {
+          ...conversation,
+          unreadCount: 0,
+        },
+        ...prevConversations,
+      ]
     })
 
     onSelectConversation(conversation)
@@ -283,40 +390,62 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
     }
 
     setConversations((prevConversations) => {
-      const alreadyExists = prevConversations.some(
-        (item) => String(item._id) === String(conversation._id)
-      )
+      const alreadyExists =
+        prevConversations.some(
+          (item) =>
+            String(item._id) ===
+            String(conversation._id)
+        )
 
       if (alreadyExists) {
         return prevConversations
       }
 
-      return [conversation, ...prevConversations]
+      return [
+        {
+          ...conversation,
+          unreadCount: 0,
+        },
+        ...prevConversations,
+      ]
     })
 
     onSelectConversation(conversation)
   }
 
-  const normalizedQuery = searchQuery.trim().toLowerCase()
+  const normalizedQuery =
+    searchQuery.trim().toLowerCase()
 
-  const filteredConversations = conversations.filter((conversation) => {
-    if (!normalizedQuery) {
-      return true
-    }
+  const filteredConversations =
+    conversations.filter((conversation) => {
+      if (!normalizedQuery) {
+        return true
+      }
 
-    const participants = conversation.participants || []
-    const currentUserId = user?._id || user?.id
-    const otherUser = participants.find(
-      (participant) =>
-        String(participant._id || participant.id || participant) !==
-        String(currentUserId)
-    )
-    const conversationName = conversation.isGroup
-      ? conversation.groupName
-      : otherUser?.name
+      const participants =
+        conversation.participants || []
 
-    return conversationName?.toLowerCase().includes(normalizedQuery)
-  })
+      const currentUserId =
+        user?._id || user?.id
+
+      const otherUser = participants.find(
+        (participant) =>
+          String(
+            participant._id ||
+            participant.id ||
+            participant
+          ) !== String(currentUserId)
+      )
+
+      const conversationName =
+        conversation.isGroup
+          ? conversation.groupName
+          : otherUser?.name
+
+      return conversationName
+        ?.toLowerCase()
+        .includes(normalizedQuery)
+    })
 
   return (
     <aside className="conversation-sidebar">
@@ -328,7 +457,9 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
             type="button"
             className="create-group-btn"
             title="Start New Conversation"
-            onClick={() => setShowNewConversation(true)}
+            onClick={() =>
+              setShowNewConversation(true)
+            }
           >
             +
           </button>
@@ -337,7 +468,9 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
             type="button"
             className="create-group-btn"
             title="Create New Group"
-            onClick={() => setShowCreateGroup(true)}
+            onClick={() =>
+              setShowCreateGroup(true)
+            }
           >
             👥
           </button>
@@ -350,69 +483,114 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
           placeholder="Search chats..."
           className="conversation-search-input"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) =>
+            setSearchQuery(e.target.value)
+          }
         />
       </div>
 
       <div className="conversation-items-list">
-        {filteredConversations.map((conversation) => {
-          const participants = conversation.participants || []
-          const currentUserId = user?._id || user?.id
+        {filteredConversations.map(
+          (conversation) => {
+            const participants =
+              conversation.participants || []
 
-          const otherUser = participants.find(
-            (participant) =>
-              String(participant._id || participant.id || participant) !==
-              String(currentUserId)
-          )
+            const currentUserId =
+              user?._id || user?.id
 
-          const conversationName = conversation.isGroup
-            ? conversation.groupName
-            : otherUser?.name || 'Chat'
+            const otherUser =
+              participants.find(
+                (participant) =>
+                  String(
+                    participant._id ||
+                    participant.id ||
+                    participant
+                  ) !== String(currentUserId)
+              )
 
-          const isSelected =
-            String(selectedConversationId) === String(conversation._id)
+            const conversationName =
+              conversation.isGroup
+                ? conversation.groupName
+                : otherUser?.name || 'Chat'
 
-          const isOnline = !conversation.isGroup && Boolean(otherUser?.isOnline)
+            const isSelected =
+              String(selectedConversationId) ===
+              String(conversation._id)
 
-          return (
-            <div
-              className={`conversation-item ${isSelected ? 'active' : ''}`}
-              key={conversation._id}
-              onClick={() => onSelectConversation(conversation)}
-            >
-              <div className="avatar-wrapper">
-                <div
-                  className={`conversation-avatar ${
-                    conversation.isGroup ? 'group-avatar' : ''
+            const isOnline =
+              !conversation.isGroup &&
+              Boolean(otherUser?.isOnline)
+
+            return (
+              <div
+                className={`conversation-item ${isSelected ? 'active' : ''
                   }`}
-                >
-                  {conversationName?.charAt(0)?.toUpperCase()}
+                key={conversation._id}
+                onClick={() => {
+                  /*
+                   * Clear the badge immediately when
+                   * the user opens the conversation.
+                   */
+                  setConversations(
+                    (prevConversations) =>
+                      prevConversations.map(
+                        (item) =>
+                          String(item._id) ===
+                            String(conversation._id)
+                            ? {
+                              ...item,
+                              unreadCount: 0,
+                            }
+                            : item
+                      )
+                  )
+
+                  onSelectConversation(
+                    conversation
+                  )
+                }}
+              >
+                <div className="avatar-wrapper">
+                  <div
+                    className={`conversation-avatar ${conversation.isGroup
+                        ? 'group-avatar'
+                        : ''
+                      }`}
+                  >
+                    {conversationName
+                      ?.charAt(0)
+                      ?.toUpperCase()}
+                  </div>
+
+                  {isOnline && (
+                    <span className="online-badge-dot"></span>
+                  )}
                 </div>
-                {isOnline && <span className="online-badge-dot"></span>}
-              </div>
 
-              <div className="conversation-details">
-                <div className="conversation-top-row">
-                  <strong className="conversation-name">
-                    {conversationName}
-                  </strong>
+                <div className="conversation-details">
+                  <div className="conversation-top-row">
+                    <strong className="conversation-name">
+                      {conversationName}
+                    </strong>
+                  </div>
+
+                  <p className="conversation-last-msg">
+                    {conversation.lastMessage?.text ||
+                      'No messages yet'}
+                  </p>
                 </div>
 
-                <p className="conversation-last-msg">
-                  {conversation.lastMessage?.text || 'No messages yet'}
-                </p>
+                {conversation.unreadCount > 0 && (
+                  <span className="unread-badge">
+                    {conversation.unreadCount > 99
+                      ? '99+'
+                      : conversation.unreadCount}
+                  </span>
+                )}
               </div>
-
-              {conversation.unreadCount > 0 && (
-                <span className="unread-badge">
-                  {conversation.unreadCount > 99
-                    ? '99+'
-                    : conversation.unreadCount}
-                </span>
-              )}
-            </div>
-          )
-        })}
+            )
+          }
+        )}
 
         {filteredConversations.length === 0 && (
           <div className="conversation-empty-state">
@@ -423,14 +601,20 @@ function ConversationList({ selectedConversationId, onSelectConversation }) {
 
       {showNewConversation && (
         <NewConversation
-          onClose={() => setShowNewConversation(false)}
-          onConversationCreated={handleConversationCreated}
+          onClose={() =>
+            setShowNewConversation(false)
+          }
+          onConversationCreated={
+            handleConversationCreated
+          }
         />
       )}
 
       {showCreateGroup && (
         <CreateGroup
-          onClose={() => setShowCreateGroup(false)}
+          onClose={() =>
+            setShowCreateGroup(false)
+          }
           onGroupCreated={handleGroupCreated}
         />
       )}
