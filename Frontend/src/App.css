@@ -1369,10 +1369,6 @@ body {
 }
 
 
-/* =========================
-   Responsive / Mobile Polish
-   ========================= */
-
 .auth-back-link {
   display: inline-block;
   margin-bottom: 20px;
@@ -1463,7 +1459,6 @@ body {
     gap: 14px;
   }
 
-  /* Chat header */
   .chat-header {
     padding: 0 16px;
   }
@@ -1492,10 +1487,10 @@ body {
     padding: 7px 10px;
   }
 
-  /* On mobile, show either the conversation list OR the selected chat. */
   .chat-body {
     position: relative;
   }
+
 
   .chat-body.show-conversations .conversation-sidebar {
     display: flex;
@@ -1788,12 +1783,12 @@ body {
 }
 
 
-/* New conversation */
 .conversation-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
 
 .new-conversation-overlay {
   position: fixed;

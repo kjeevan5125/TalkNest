@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/authContext'
 import ConversationList from './ConversationList'
 import ChatWindow from './ChatWindow'
@@ -9,7 +10,37 @@ import socket, {
 
 function ChatLayout() {
   const { user, logout } = useAuth()
+  const [, setSearchParams] = useSearchParams()
   const [selectedConversation, setSelectedConversation] = useState(null)
+
+  useEffect(() => {
+    const handlePopState = () => {
+
+      const params = new URLSearchParams(window.location.search)
+      if (!params.get('c')) {
+        setSelectedConversation(null)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+
+  const handleSelectConversation = useCallback((conversation) => {
+    setSelectedConversation(conversation)
+    if (conversation?._id) {
+      setSearchParams({ c: conversation._id })
+    } else {
+      setSearchParams({})
+    }
+  }, [setSearchParams])
+
+  const handleBackToConversations = useCallback(() => {
+    setSelectedConversation(null)
+    setSearchParams({})
+  }, [setSearchParams])
+
 
   const token = localStorage.getItem('token')
 
@@ -140,17 +171,18 @@ function ChatLayout() {
       >
         <ConversationList
           selectedConversationId={selectedConversation?._id}
-          onSelectConversation={setSelectedConversation}
+          onSelectConversation={handleSelectConversation}
         />
 
         <ChatWindow
           key={selectedConversation?._id || 'empty-chat'}
           conversation={selectedConversation}
-          onBack={() => setSelectedConversation(null)}
+          onBack={handleBackToConversations}
         />
       </div>
     </div>
   )
 }
+
 
 export default ChatLayout

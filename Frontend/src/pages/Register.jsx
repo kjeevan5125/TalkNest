@@ -1,20 +1,24 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, Navigate } from 'react-router-dom'
 import api from '../services/api'
 import { useAuth } from '../context/authContext'
 
 function Register() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { user, login } = useAuth()
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
   })
-
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  if (user) {
+    return <Navigate to="/chat" replace />
+  }
+
 
   const handleChange = (e) => {
     setFormData({

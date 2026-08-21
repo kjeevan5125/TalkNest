@@ -1,8 +1,10 @@
 import axios from 'axios'
+import { getBaseUrl } from './config'
 
 const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL}/api`,
+  baseURL: `${getBaseUrl()}/api`,
 })
+
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')

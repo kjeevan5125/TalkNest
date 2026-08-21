@@ -188,6 +188,12 @@ const initializeSocket = (server) => {
               }
             );
 
+            io.to(String(conversationId)).emit(
+              "newMessage",
+              populatedMessage
+            );
+
+
             if (callback) {
               callback({
                 success: true,

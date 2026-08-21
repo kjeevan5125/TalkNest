@@ -30,13 +30,12 @@ function ChatWindow({ conversation, onBack }) {
       return
     }
 
-    setIsOnline(Boolean(otherUser.isOnline))
-
     const handleUserOnline = ({ userId }) => {
       if (String(userId) === String(otherUser._id)) {
         setIsOnline(true)
       }
     }
+
 
     const handleUserOffline = ({ userId }) => {
       if (String(userId) === String(otherUser._id)) {

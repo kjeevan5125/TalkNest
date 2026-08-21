@@ -1,11 +1,17 @@
 import { io } from 'socket.io-client'
+import { getBaseUrl } from './config'
 
-const socket = io(import.meta.env.VITE_API_URL, {
+const socket = io(getBaseUrl(), {
   autoConnect: false,
-  transports: ['websocket'],
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
 })
 
 export const connectSocket = (token) => {
+  if (!token) return
+
   socket.auth = {
     token,
   }
@@ -21,4 +27,4 @@ export const disconnectSocket = () => {
   }
 }
 
-export default socket
+export default socket

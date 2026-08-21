@@ -1,5 +1,6 @@
 import Message from "../models/Message.js";
 import Conversation from "../models/Conversation.js";
+import { getSocketServer } from "../config/socketServer.js";
 
 export const sendMessage = async (req, res) => {
   try {
@@ -38,6 +39,14 @@ export const sendMessage = async (req, res) => {
       "sender",
       "name email"
     );
+
+    const io = getSocketServer();
+    if (io) {
+      conversation.participants.forEach((participantId) => {
+        io.to(String(participantId)).emit("newMessage", populatedMessage);
+      });
+      io.to(String(conversationId)).emit("newMessage", populatedMessage);
+    }
 
     res.status(201).json(populatedMessage);
   } catch (error) {
