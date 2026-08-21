@@ -892,7 +892,7 @@ body {
   position: relative;
 }
 
-.chat-message.received {
+.chat-message-row.received .chat-message {
   background: #ffffff;
   color: #0f172a;
   border: 1px solid #e2e8f0;
@@ -900,7 +900,7 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.chat-message.sent {
+.chat-message-row.sent .chat-message {
   background: #0f172a;
   color: #ffffff;
   border-radius: 16px 16px 4px 16px;
